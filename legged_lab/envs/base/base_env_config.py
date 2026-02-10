@@ -183,7 +183,7 @@ class BaseAgentCfg(RslRlOnPolicyRunnerCfg):
         noise_std_type="scalar",
         actor_hidden_dims=[512, 256, 128],
         critic_hidden_dims=[512, 256, 128],
-        activation="elu",
+        activation="silu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
         class_name="PPO",
@@ -213,6 +213,14 @@ class BaseAgentCfg(RslRlOnPolicyRunnerCfg):
     resume = False
     load_run = ".*"
     load_checkpoint = "model_.*.pt"
+    # performance flags
+    use_torch_compile = True
+    torch_compile_backend = "inductor"
+    torch_compile_mode = "default"
+    torch_compile_fullgraph = False
+    torch_compile_dynamic = False
+    use_amp = True
+    amp_dtype = "fp16"
 
     def __post_init__(self):
         pass
