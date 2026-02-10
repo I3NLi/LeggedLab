@@ -125,7 +125,20 @@ class G1FlatEnvCfg(BaseEnvCfg):
         self.robot.terminate_contacts_body_names = [".*torso.*"]
         self.robot.feet_body_names = [".*ankle_roll.*"]
         self.domain_rand.events.add_base_mass.params["asset_cfg"].body_names = [".*torso.*"]
+        # speed curriculum
+        self.robot.actor_obs_history_length = 1
+        self.robot.critic_obs_history_length = 1
+        self.episode_length_curriculum.enable = True
+        self.episode_length_curriculum.round_episode_count = 2048
+        self.episode_length_curriculum.episode_length_ratio = 1
+        self.episode_length_curriculum.required_streak_rounds = 1
+        self.episode_length_curriculum.speed_increment = 0.25
+        self.episode_length_curriculum.max_forward_speed = -1.0
+        self.episode_length_curriculum.min_mean_reward = 30.0
+        self.episode_length_curriculum.print_status = True
 
+        self.reward.track_lin_vel_xy_exp.weight = 1.5
+        self.reward.track_ang_vel_z_exp.weight = 1.5
 
 @configclass
 class G1FlatAgentCfg(BaseAgentCfg):

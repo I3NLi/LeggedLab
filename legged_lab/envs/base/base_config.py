@@ -46,6 +46,9 @@ class BaseSceneCfg:
     terrain_generator: TerrainGeneratorCfg = None
     max_init_terrain_level: int = 5
     height_scanner: HeightScannerCfg = HeightScannerCfg()
+    out_of_bounds_teleport_enable: bool = True
+    out_of_bounds_teleport_trigger_scale: float = 1.5
+    out_of_bounds_teleport_margin: float = -100.0
 
 
 @configclass
@@ -94,6 +97,19 @@ class CommandsCfg:
     heading_control_stiffness: float = 0.5
     debug_vis: bool = True
     ranges: CommandRangesCfg = CommandRangesCfg()
+
+
+@configclass
+class EpisodeLengthCurriculumCfg:
+    enable: bool = False
+    round_episode_count: int = 1024
+    episode_length_ratio: float = 0.98
+    required_streak_rounds: int = 3
+    speed_increment: float = 0.1
+    min_mean_reward: float = 0.0
+    # <= 0 means no cap.
+    max_forward_speed: float = -1.0
+    print_status: bool = True
 
 
 @configclass

@@ -9,6 +9,7 @@
 # This file contains code derived from Isaac Lab Project (BSD-3-Clause license)
 # with modifications by Legged Lab Project (BSD-3-Clause license).
 
+# python legged_lab/scripts/train.py --task=g1_flat --num_envs=4096 --resume=True --load_run=latest --load_checkpoint=latest
 import argparse
 
 from isaaclab.app import AppLauncher

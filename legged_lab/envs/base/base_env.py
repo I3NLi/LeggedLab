@@ -122,8 +122,19 @@ class BaseEnv(VecEnv):
         self.add_noise = self.cfg.noise.add_noise
 
         self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+        self.episode_reward_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self.sim_step_counter = 0
         self.time_out_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._episode_had_teleport_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._teleported_this_step_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._episode_len_curriculum_round = 0
+        self._episode_len_curriculum_sum = 0.0
+        self._episode_len_curriculum_count = 0
+        self._episode_len_curriculum_streak = 0
+        self._episode_len_curriculum_updates = 0
+        self._episode_len_curriculum_last_round_mean = 0.0
+        self._episode_reward_curriculum_sum = 0.0
+        self._episode_reward_curriculum_last_round_mean = 0.0
         self.init_obs_buffer()
 
     def compute_current_observations(self):
@@ -203,6 +214,7 @@ class BaseEnv(VecEnv):
 
         reward_extras = self.reward_manager.reset(env_ids)
         self.extras["log"].update(reward_extras)
+        self._update_episode_length_curriculum(env_ids)
         self.extras["time_outs"] = self.time_out_buf
 
         self.command_generator.reset(env_ids)
@@ -210,6 +222,9 @@ class BaseEnv(VecEnv):
         self.critic_obs_buffer.reset(env_ids)
         self.action_buffer.reset(env_ids)
         self.episode_length_buf[env_ids] = 0
+        self.episode_reward_buf[env_ids] = 0.0
+        self._episode_had_teleport_buf[env_ids] = False
+        self._teleported_this_step_buf[env_ids] = False
 
         self.scene.write_data_to_sim()
         self.sim.forward()
@@ -236,8 +251,14 @@ class BaseEnv(VecEnv):
         if "interval" in self.event_manager.available_modes:
             self.event_manager.apply(mode="interval", dt=self.step_dt)
 
+        self._teleported_this_step_buf[:] = False
+        teleported_count = self._teleport_out_of_bounds_envs()
+        if teleported_count > 0:
+            self.extras.setdefault("log", dict())["Env/out_of_bounds_teleports"] = float(teleported_count)
+
         self.reset_buf, self.time_out_buf = self.check_reset()
         reward_buf = self.reward_manager.compute(self.step_dt)
+        self.episode_reward_buf += reward_buf
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset(env_ids)
 
@@ -260,9 +281,50 @@ class BaseEnv(VecEnv):
             > 1.0,
             dim=1,
         )
+        # Ignore contact-based termination only in the step where teleport happened.
+        # This prevents teleport itself from causing an immediate reset, while future falls still terminate early.
+        reset_buf &= ~self._teleported_this_step_buf
         time_out_buf = self.episode_length_buf >= self.max_episode_length
         reset_buf |= time_out_buf
         return reset_buf, time_out_buf
+
+    def _teleport_out_of_bounds_envs(self) -> int:
+        terrain_generator = self.cfg.scene.terrain_generator
+        if terrain_generator is None:
+            return 0
+        if not self.cfg.scene.out_of_bounds_teleport_enable:
+            return 0
+
+        terrain_size_x, terrain_size_y = terrain_generator.size
+        half_size_x = float(terrain_size_x) * 0.5
+        half_size_y = float(terrain_size_y) * 0.5
+        trigger_scale = max(float(self.cfg.scene.out_of_bounds_teleport_trigger_scale), 0.0)
+        trigger_half_x = half_size_x * trigger_scale
+        trigger_half_y = half_size_y * trigger_scale
+        root_xy = self.robot.data.root_pos_w[:, :2]
+        rel_xy = root_xy - self.scene.env_origins[:, :2]
+
+        out_of_bounds = (torch.abs(rel_xy[:, 0]) > trigger_half_x) | (torch.abs(rel_xy[:, 1]) > trigger_half_y)
+        env_ids = out_of_bounds.nonzero(as_tuple=False).flatten()
+        if env_ids.numel() == 0:
+            return 0
+
+        safe_margin = max(float(self.cfg.scene.out_of_bounds_teleport_margin), 0.0)
+        spawn_half_x = max(half_size_x - safe_margin, 0.0)
+        spawn_half_y = max(half_size_y - safe_margin, 0.0)
+        offsets = torch.zeros((env_ids.numel(), 2), device=self.device)
+        if spawn_half_x > 0.0:
+            offsets[:, 0] = (torch.rand(env_ids.numel(), device=self.device) * 2.0 - 1.0) * spawn_half_x
+        if spawn_half_y > 0.0:
+            offsets[:, 1] = (torch.rand(env_ids.numel(), device=self.device) * 2.0 - 1.0) * spawn_half_y
+
+        # Only relocate x/y. Root orientation, joint posture, and velocities are preserved.
+        root_state = self.robot.data.root_state_w[env_ids].clone()
+        root_state[:, :2] = self.scene.env_origins[env_ids, :2] + offsets
+        self.robot.write_root_state_to_sim(root_state, env_ids=env_ids)
+        self._episode_had_teleport_buf[env_ids] = True
+        self._teleported_this_step_buf[env_ids] = True
+        return int(env_ids.numel())
 
     def init_obs_buffer(self):
         if self.add_noise:
@@ -295,6 +357,100 @@ class BaseEnv(VecEnv):
         self.critic_obs_buffer = CircularBuffer(
             max_len=self.cfg.robot.critic_obs_history_length, batch_size=self.num_envs, device=self.device
         )
+
+    def _update_episode_length_curriculum(self, env_ids):
+        cfg = self.cfg.episode_length_curriculum
+        if not cfg.enable:
+            return
+
+        round_completed = False
+        speed_updated = False
+        required_streak_rounds = max(int(cfg.required_streak_rounds), 1)
+        target_episode_count = cfg.round_episode_count if cfg.round_episode_count > 0 else self.num_envs
+
+        episode_lengths = self.episode_length_buf[env_ids].float()
+        valid_mask = episode_lengths > 0.0
+        # Only count episodes that survived to timeout.
+        valid_mask &= self.time_out_buf[env_ids]
+        # Ignore episodes that used out-of-bounds teleport so curriculum mean episode length is not biased.
+        valid_mask &= ~self._episode_had_teleport_buf[env_ids]
+        valid_episode_lengths = episode_lengths[valid_mask]
+        episode_rewards = self.episode_reward_buf[env_ids].float()
+        valid_episode_rewards = episode_rewards[valid_mask]
+        if valid_episode_lengths.numel() > 0:
+            self._episode_len_curriculum_sum += float(valid_episode_lengths.sum().item())
+            self._episode_len_curriculum_count += int(valid_episode_lengths.numel())
+            self._episode_reward_curriculum_sum += float(valid_episode_rewards.sum().item())
+
+            if self._episode_len_curriculum_count >= target_episode_count:
+                round_completed = True
+                self._episode_len_curriculum_round += 1
+                self._episode_len_curriculum_last_round_mean = self._episode_len_curriculum_sum / max(
+                    self._episode_len_curriculum_count, 1
+                )
+                self._episode_reward_curriculum_last_round_mean = self._episode_reward_curriculum_sum / max(
+                    self._episode_len_curriculum_count, 1
+                )
+                round_threshold = float(self.max_episode_length) * float(cfg.episode_length_ratio)
+                reward_threshold = float(cfg.min_mean_reward)
+                if (
+                    self._episode_len_curriculum_last_round_mean >= round_threshold
+                    and self._episode_reward_curriculum_last_round_mean >= reward_threshold
+                ):
+                    self._episode_len_curriculum_streak += 1
+                else:
+                    self._episode_len_curriculum_streak = 0
+
+                self._episode_len_curriculum_sum = 0.0
+                self._episode_len_curriculum_count = 0
+                self._episode_reward_curriculum_sum = 0.0
+
+                if self._episode_len_curriculum_streak >= required_streak_rounds:
+                    x_min, x_max = self.command_generator.cfg.ranges.lin_vel_x
+                    if float(cfg.max_forward_speed) > 0.0 and np.isfinite(float(cfg.max_forward_speed)):
+                        new_x_max = min(float(x_max) + float(cfg.speed_increment), float(cfg.max_forward_speed))
+                    else:
+                        new_x_max = float(x_max) + float(cfg.speed_increment)
+
+                    if new_x_max > float(x_max):
+                        new_x_range = (float(x_min), float(new_x_max))
+                        self.command_generator.cfg.ranges.lin_vel_x = new_x_range
+                        self.cfg.commands.ranges.lin_vel_x = new_x_range
+                        self._episode_len_curriculum_updates += 1
+                        speed_updated = True
+
+                    self._episode_len_curriculum_streak = 0
+
+        x_min, x_max = self.command_generator.cfg.ranges.lin_vel_x
+        self.extras["log"].update(
+            {
+                "Curriculum/round_index": float(self._episode_len_curriculum_round),
+                "Curriculum/round_mean_episode_length": float(self._episode_len_curriculum_last_round_mean),
+                "Curriculum/round_mean_episode_reward": float(self._episode_reward_curriculum_last_round_mean),
+                "Curriculum/episode_length_streak": float(self._episode_len_curriculum_streak),
+                "Curriculum/forward_speed_min": float(x_min),
+                "Curriculum/forward_speed_max": float(x_max),
+                "Curriculum/speed_updates": float(self._episode_len_curriculum_updates),
+            }
+        )
+
+        if cfg.print_status and round_completed:
+            step = self.sim_step_counter // self.cfg.sim.decimation
+            cap_text = (
+                f"{float(cfg.max_forward_speed):.3f}"
+                if float(cfg.max_forward_speed) > 0.0 and np.isfinite(float(cfg.max_forward_speed))
+                else "inf"
+            )
+            update_tag = " [speed+]" if speed_updated else ""
+            print(
+                "[CURRICULUM][LeggedLab] "
+                f"step={step} round={self._episode_len_curriculum_round} "
+                f"mean_ep_len={self._episode_len_curriculum_last_round_mean:.2f}/{float(self.max_episode_length):.2f} "
+                f"mean_ep_rew={self._episode_reward_curriculum_last_round_mean:.2f}/{float(cfg.min_mean_reward):.2f} "
+                f"streak={self._episode_len_curriculum_streak}/{required_streak_rounds} "
+                f"lin_vel_x=({float(x_min):.3f}, {float(x_max):.3f}) "
+                f"cap={cap_text} updates={self._episode_len_curriculum_updates}{update_tag}"
+            )
 
     def update_terrain_levels(self, env_ids):
         distance = torch.norm(self.robot.data.root_pos_w[env_ids, :2] - self.scene.env_origins[env_ids, :2], dim=1)

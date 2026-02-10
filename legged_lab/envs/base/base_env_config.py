@@ -31,6 +31,7 @@ from .base_config import (
     CommandRangesCfg,
     CommandsCfg,
     DomainRandCfg,
+    EpisodeLengthCurriculumCfg,
     EventCfg,
     HeightScannerCfg,
     NoiseCfg,
@@ -98,6 +99,7 @@ class BaseEnvCfg:
             lin_vel_x=(-0.6, 1.0), lin_vel_y=(-0.5, 0.5), ang_vel_z=(-1.57, 1.57), heading=(-math.pi, math.pi)
         ),
     )
+    episode_length_curriculum: EpisodeLengthCurriculumCfg = EpisodeLengthCurriculumCfg()
     noise: NoiseCfg = NoiseCfg(
         add_noise=True,
         noise_scales=NoiseScalesCfg(
