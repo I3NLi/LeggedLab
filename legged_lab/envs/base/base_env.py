@@ -127,6 +127,11 @@ class BaseEnv(VecEnv):
         self.time_out_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._episode_had_teleport_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._teleported_this_step_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._termination_contact_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
+        self._termination_contact_delay_s = max(0.0, float(self.cfg.robot.terminate_contacts_delay_s))
+        self._static_log_info = {
+            "Config/termination_delay_s": float(self._termination_contact_delay_s),
+        }
         self._episode_len_curriculum_round = 0
         self._episode_len_curriculum_sum = 0.0
         self._episode_len_curriculum_count = 0
@@ -198,6 +203,7 @@ class BaseEnv(VecEnv):
             return
 
         self.extras["log"] = dict()
+        self.extras["log"].update(self._static_log_info)
         if self.cfg.scene.terrain_generator is not None:
             if self.cfg.scene.terrain_generator.curriculum:
                 terrain_levels = self.update_terrain_levels(env_ids)
@@ -225,6 +231,7 @@ class BaseEnv(VecEnv):
         self.episode_reward_buf[env_ids] = 0.0
         self._episode_had_teleport_buf[env_ids] = False
         self._teleported_this_step_buf[env_ids] = False
+        self._termination_contact_time_buf[env_ids] = 0.0
 
         self.scene.write_data_to_sim()
         self.sim.forward()
@@ -270,7 +277,7 @@ class BaseEnv(VecEnv):
     def check_reset(self):
         net_contact_forces = self.contact_sensor.data.net_forces_w_history
 
-        reset_buf = torch.any(
+        termination_contact = torch.any(
             torch.max(
                 torch.norm(
                     net_contact_forces[:, :, self.termination_contact_cfg.body_ids],
@@ -283,7 +290,14 @@ class BaseEnv(VecEnv):
         )
         # Ignore contact-based termination only in the step where teleport happened.
         # This prevents teleport itself from causing an immediate reset, while future falls still terminate early.
-        reset_buf &= ~self._teleported_this_step_buf
+        termination_contact &= ~self._teleported_this_step_buf
+        if self._termination_contact_delay_s <= 0.0:
+            reset_buf = termination_contact
+        else:
+            # Accumulate continuous fall duration; reset when contact clears.
+            contact_mask = termination_contact.to(self._termination_contact_time_buf.dtype)
+            self._termination_contact_time_buf.mul_(contact_mask).add_(contact_mask * self.step_dt)
+            reset_buf = self._termination_contact_time_buf >= self._termination_contact_delay_s
         time_out_buf = self.episode_length_buf >= self.max_episode_length
         reset_buf |= time_out_buf
         return reset_buf, time_out_buf

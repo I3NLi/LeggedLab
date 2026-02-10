@@ -58,6 +58,8 @@ class RobotCfg:
     action_scale: float = 0.25
     terminate_contacts_body_names: list = []
     feet_body_names: list = []
+    # Allow brief recovery after a fall before terminating the episode.
+    terminate_contacts_delay_s: float = 1.0
 
 
 @configclass

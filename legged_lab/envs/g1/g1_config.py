@@ -123,6 +123,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
         self.scene.terrain_type = "generator"
         self.scene.terrain_generator = GRAVEL_TERRAINS_CFG
         self.robot.terminate_contacts_body_names = [".*torso.*"]
+        self.robot.terminate_contacts_delay_s = 1.0
         self.robot.feet_body_names = [".*ankle_roll.*"]
         self.domain_rand.events.add_base_mass.params["asset_cfg"].body_names = [".*torso.*"]
         # speed curriculum

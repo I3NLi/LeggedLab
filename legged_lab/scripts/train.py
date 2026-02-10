@@ -74,6 +74,11 @@ def train():
         agent_cfg.seed = seed
 
     env = env_class(env_cfg, args_cli.headless)
+    # Log key config switches for experiment tracking.
+    activation_name = str(getattr(agent_cfg.policy, "activation", "unknown"))
+    env._static_log_info["Config/policy_activation_silu"] = float(activation_name.lower() == "silu")
+    print(f"[INFO] Policy activation: {activation_name}")
+    print(f"[INFO] Termination delay (s): {env_cfg.robot.terminate_contacts_delay_s}")
 
     log_root_path = os.path.join("logs", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
@@ -84,7 +89,6 @@ def train():
         log_dir += f"_{agent_cfg.run_name}"
     log_dir = os.path.join(log_root_path, log_dir)
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
-
     if agent_cfg.resume:
         # get path to previous checkpoint
         resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
