@@ -213,12 +213,6 @@ class BaseAgentCfg(RslRlOnPolicyRunnerCfg):
     resume = False
     load_run = ".*"
     load_checkpoint = "model_.*.pt"
-    # performance flags
-    use_torch_compile = True
-    torch_compile_backend = "inductor"
-    torch_compile_mode = "default"
-    torch_compile_fullgraph = False
-    torch_compile_dynamic = False
     use_amp = True
     amp_dtype = "fp16"
 
