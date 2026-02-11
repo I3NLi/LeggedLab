@@ -183,7 +183,7 @@ class BaseAgentCfg(RslRlOnPolicyRunnerCfg):
         noise_std_type="scalar",
         actor_hidden_dims=[512, 256, 128],
         critic_hidden_dims=[512, 256, 128],
-        activation="silu",
+        activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
         class_name="PPO",

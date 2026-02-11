@@ -31,13 +31,16 @@ from legged_lab.terrains import GRAVEL_TERRAINS_CFG, ROUGH_TERRAINS_CFG
 
 @configclass
 class G1RewardCfg(RewardCfg):
+    # Command tracking rewards (drive toward commanded linear/angular velocity).
     track_lin_vel_xy_exp = RewTerm(func=mdp.track_lin_vel_xy_yaw_frame_exp, weight=1.0, params={"std": 0.5})
     track_ang_vel_z_exp = RewTerm(func=mdp.track_ang_vel_z_world_exp, weight=1.0, params={"std": 0.5})
+    # Stability and smoothness penalties.
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-1.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     energy = RewTerm(func=mdp.energy, weight=-1e-3)
     dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
+    # Contact-based penalties/rewards.
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
         weight=-1.0,
@@ -53,6 +56,7 @@ class G1RewardCfg(RewardCfg):
     )
     flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-1.0)
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
+    # Gait shaping: encourage alternating single-stance timing.
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
         weight=0.15,
@@ -85,6 +89,7 @@ class G1RewardCfg(RewardCfg):
         weight=-2.0,
         params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=[".*ankle_roll.*"])},
     )
+    # Joint limit and posture regularization.
     dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=-2.0)
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,
@@ -118,15 +123,18 @@ class G1FlatEnvCfg(BaseEnvCfg):
 
     def __post_init__(self):
         super().__post_init__()
+        # Scene and robot wiring.
         self.scene.height_scanner.prim_body_name = "torso_link"
         self.scene.robot = G1_CFG
         self.scene.terrain_type = "generator"
         self.scene.terrain_generator = GRAVEL_TERRAINS_CFG
+        # Termination and feet contact configuration.
         self.robot.terminate_contacts_body_names = [".*torso.*"]
         self.robot.terminate_contacts_delay_s = 1.0
         self.robot.feet_body_names = [".*ankle_roll.*"]
+        # Domain randomization target (mass noise on torso).
         self.domain_rand.events.add_base_mass.params["asset_cfg"].body_names = [".*torso.*"]
-        # speed curriculum
+        # Speed curriculum and observation history.
         self.robot.actor_obs_history_length = 1
         self.robot.critic_obs_history_length = 1
         self.episode_length_curriculum.enable = True
@@ -138,6 +146,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
         self.episode_length_curriculum.min_mean_reward = 30.0
         self.episode_length_curriculum.print_status = True
 
+        # Emphasize tracking terms for flat ground.
         self.reward.track_lin_vel_xy_exp.weight = 1.5
         self.reward.track_ang_vel_z_exp.weight = 1.5
 
@@ -152,6 +161,7 @@ class G1RoughEnvCfg(G1FlatEnvCfg):
 
     def __post_init__(self):
         super().__post_init__()
+        # Rough terrain overrides (add height scan + adjust rewards).
         self.scene.height_scanner.enable_height_scan = True
         self.scene.terrain_generator = ROUGH_TERRAINS_CFG
         self.robot.actor_obs_history_length = 1

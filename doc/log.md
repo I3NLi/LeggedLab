@@ -57,3 +57,13 @@ TensorBoard 观察：
 
 课程逻辑调整：
 - 仅统计 “timeout 存活” 的 episode；并要求 mean_reward ≥ 22 才升级课程。
+
+# 2026-02-11_激活函数选择
+尝试使用 SiLU，收敛明显变慢；继续使用 ELU 作为默认激活函数。
+
+# 2026-02-11_g1_flat 训练日志补充
+日志目录：`/home/hiyio/LeggedLab/logs/g1_flat/2026-02-10_19-15-07`
+最高 `Train/mean_reward` ≈ 22.10（step≈21567，对应 checkpoint 约 `model_21500.pt`）。
+
+# 2026-02-11_g1_flat 训练分析补充
+- `speed_updates=0`，课程未提速；主要原因是 `min_mean_reward=30`，当前最高均值约 22.10。
