@@ -112,6 +112,37 @@ class EpisodeLengthCurriculumCfg:
     # <= 0 means no cap.
     max_forward_speed: float = -1.0
     print_status: bool = True
+    stages: list["EpisodeLengthCurriculumStageCfg"] = []
+
+
+@configclass
+class EpisodeLengthCurriculumStageCfg:
+    """Per-stage overrides for episode-length speed curriculum."""
+
+    # Number of successful speed updates to stay in this stage.
+    # < 0 means infinite (no stage limit).
+    max_updates: int = -1
+    # Optional command range overrides for this stage.
+    lin_vel_x: tuple[float, float] | None = None
+    lin_vel_y: tuple[float, float] | None = None
+    ang_vel_z: tuple[float, float] | None = None
+    # Optional termination override for fall-recovery stages.
+    termination_contact_enabled: bool | None = None
+    termination_contact_delay_s: float | None = None
+    speed_increment: float | None = None
+    min_mean_reward: float | None = None
+    episode_length_ratio: float | None = None
+    round_episode_count: int | None = None
+    required_streak_rounds: int | None = None
+    max_forward_speed: float | None = None
+    # Optional reward weight overrides for tracking terms.
+    track_lin_vel_xy_exp_weight: float | None = None
+    track_ang_vel_z_exp_weight: float | None = None
+    # Optional reward weight schedule for infinite stages.
+    track_lin_vel_xy_exp_weight_increment: float | None = None
+    track_lin_vel_xy_exp_weight_max: float | None = None
+    track_ang_vel_z_exp_weight_increment: float | None = None
+    track_ang_vel_z_exp_weight_max: float | None = None
 
 
 @configclass

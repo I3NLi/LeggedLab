@@ -15,6 +15,7 @@ from isaaclab.utils import configclass
 
 import legged_lab.mdp as mdp
 from legged_lab.assets.unitree import G1_CFG
+from legged_lab.envs.base.base_config import EpisodeLengthCurriculumStageCfg
 from legged_lab.envs.base.base_env_config import (  # noqa:F401
     BaseAgentCfg,
     BaseEnvCfg,
@@ -145,10 +146,66 @@ class G1FlatEnvCfg(BaseEnvCfg):
         self.episode_length_curriculum.max_forward_speed = -1.0
         self.episode_length_curriculum.min_mean_reward = 30.0
         self.episode_length_curriculum.print_status = True
+        # Staged curriculum: each stage overrides selected parameters.
+        # Final stage uses max_updates < 0 (infinite upgrades, no cap).
+        self.episode_length_curriculum.stages = [
+            # Stage 0: basic walking with small lateral/turn commands.
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                speed_increment=0.0,
+                min_mean_reward=20.0,
+            ),
+            # Stage 1: fall-recovery practice (allow longer contact before termination).
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                termination_contact_delay_s=2.0,
+                lin_vel_x=(-1, 1),
+                lin_vel_y=(-0.5, 0.5),
+                ang_vel_z=(-0.5, 0.5),
+                speed_increment=0.0,
+                min_mean_reward=20.0,
+            ),
+            # Stage 2: ramp higher forward speed while keeping limited lateral/turning.
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=3,
+                termination_contact_enabled=True,
+                lin_vel_x=(-2, 2),
+                lin_vel_y=(-1, 1),
+                ang_vel_z=(-1, 1),
+                max_forward_speed=1.6,
+                min_mean_reward=20.0,
+                track_lin_vel_xy_exp_weight=1.5,
+                track_ang_vel_z_exp_weight=1.5,
+            ),
+            # Stage 3: add stronger turning and lateral range.
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                speed_increment=1.0,
+                min_mean_reward=30.0,
+                track_lin_vel_xy_exp_weight=1.5,
+                track_ang_vel_z_exp_weight=1.5,
+            ),
+            # Stage 4: full lateral/turn commands + unlimited forward-speed curriculum.
+            # If rewards stall, slowly increase tracking weights to help convergence.
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=-1,
+                lin_vel_y=(-0.5, 0.5),
+                ang_vel_z=(-1.0, 1.0),
+                speed_increment=0.5,
+                max_forward_speed=-1.0,
+                min_mean_reward=25.0,
+                track_lin_vel_xy_exp_weight=2.0,
+                track_lin_vel_xy_exp_weight_increment=0.05,
+                track_lin_vel_xy_exp_weight_max=3.0,
+                track_ang_vel_z_exp_weight=2.0,
+                track_ang_vel_z_exp_weight_increment=0.05,
+                track_ang_vel_z_exp_weight_max=3.0,
+            ),
+        ]
 
-        # Emphasize tracking terms for flat ground.
-        self.reward.track_lin_vel_xy_exp.weight = 1.5
-        self.reward.track_ang_vel_z_exp.weight = 1.5
+        # # Emphasize tracking terms for flat ground.
+        # self.reward.track_lin_vel_xy_exp.weight = 1.5
+        # self.reward.track_ang_vel_z_exp.weight = 1.5
 
 @configclass
 class G1FlatAgentCfg(BaseAgentCfg):

@@ -129,6 +129,7 @@ class BaseEnv(VecEnv):
         self._teleported_this_step_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._termination_contact_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self._termination_contact_delay_s = max(0.0, float(self.cfg.robot.terminate_contacts_delay_s))
+        self._termination_contact_enabled = True
         self._static_log_info = {
             "Config/termination_delay_s": float(self._termination_contact_delay_s),
         }
@@ -136,7 +137,9 @@ class BaseEnv(VecEnv):
         self._episode_len_curriculum_sum = 0.0
         self._episode_len_curriculum_count = 0
         self._episode_len_curriculum_streak = 0
-        self._episode_len_curriculum_updates = 0
+        self._episode_len_curriculum_stage_successes = 0
+        self._episode_len_curriculum_speed_updates = 0
+        self._episode_len_curriculum_stage_idx = -1
         self._episode_len_curriculum_last_round_mean = 0.0
         self._episode_reward_curriculum_sum = 0.0
         self._episode_reward_curriculum_last_round_mean = 0.0
@@ -276,6 +279,11 @@ class BaseEnv(VecEnv):
 
     def check_reset(self):
         net_contact_forces = self.contact_sensor.data.net_forces_w_history
+        time_out_buf = self.episode_length_buf >= self.max_episode_length
+
+        if not self._termination_contact_enabled:
+            reset_buf = time_out_buf
+            return reset_buf, time_out_buf
 
         termination_contact = torch.any(
             torch.max(
@@ -298,7 +306,6 @@ class BaseEnv(VecEnv):
             contact_mask = termination_contact.to(self._termination_contact_time_buf.dtype)
             self._termination_contact_time_buf.mul_(contact_mask).add_(contact_mask * self.step_dt)
             reset_buf = self._termination_contact_time_buf >= self._termination_contact_delay_s
-        time_out_buf = self.episode_length_buf >= self.max_episode_length
         reset_buf |= time_out_buf
         return reset_buf, time_out_buf
 
@@ -377,10 +384,93 @@ class BaseEnv(VecEnv):
         if not cfg.enable:
             return
 
+        def _resolve_stage(successes: int):
+            stage_cfg = None
+            stage_idx = -1
+            stage_max_updates = -1
+            stage_progress = 0
+            if getattr(cfg, "stages", None):
+                remaining = max(int(successes), 0)
+                consumed = 0
+                for idx, stage in enumerate(cfg.stages):
+                    max_updates = int(stage.max_updates) if stage.max_updates is not None else -1
+                    if max_updates < 0:
+                        stage_cfg = stage
+                        stage_idx = idx
+                        stage_max_updates = -1
+                        stage_progress = remaining
+                        break
+                    if remaining < max_updates:
+                        stage_cfg = stage
+                        stage_idx = idx
+                        stage_max_updates = max_updates
+                        stage_progress = remaining
+                        break
+                    remaining -= max_updates
+                    consumed += max_updates
+                if stage_cfg is None:
+                    stage_cfg = cfg.stages[-1]
+                    stage_idx = len(cfg.stages) - 1
+                    stage_max_updates = int(stage_cfg.max_updates) if stage_cfg.max_updates is not None else -1
+                    stage_progress = max(int(successes) - consumed, 0)
+            return stage_cfg, stage_idx, stage_max_updates, stage_progress
+
+        def _apply_reward_weight(term_name: str, weight_value: float | None):
+            if weight_value is None:
+                return
+            weight_value = float(weight_value)
+            if hasattr(self.cfg.reward, term_name):
+                getattr(self.cfg.reward, term_name).weight = weight_value
+            try:
+                term_cfg = self.reward_manager.get_term_cfg(term_name)
+            except ValueError:
+                return
+            term_cfg.weight = weight_value
+            self.reward_manager.set_term_cfg(term_name, term_cfg)
+
+        def _apply_stage_overrides(stage_cfg):
+            if stage_cfg is None:
+                return
+
+            def _apply_range(attr_name, value):
+                if value is None:
+                    return
+                new_range = (float(value[0]), float(value[1]))
+                setattr(self.command_generator.cfg.ranges, attr_name, new_range)
+                setattr(self.cfg.commands.ranges, attr_name, new_range)
+
+            _apply_range("lin_vel_x", stage_cfg.lin_vel_x)
+            _apply_range("lin_vel_y", stage_cfg.lin_vel_y)
+            _apply_range("ang_vel_z", stage_cfg.ang_vel_z)
+
+            if stage_cfg.termination_contact_enabled is not None:
+                self._termination_contact_enabled = bool(stage_cfg.termination_contact_enabled)
+                # Reset accumulated fall time to avoid stale termination when toggling modes.
+                self._termination_contact_time_buf.zero_()
+            if stage_cfg.termination_contact_delay_s is not None:
+                self._termination_contact_delay_s = max(0.0, float(stage_cfg.termination_contact_delay_s))
+
+            _apply_reward_weight("track_lin_vel_xy_exp", stage_cfg.track_lin_vel_xy_exp_weight)
+            _apply_reward_weight("track_ang_vel_z_exp", stage_cfg.track_ang_vel_z_exp_weight)
+
+        stage_cfg, stage_idx, stage_max_updates, stage_progress = _resolve_stage(
+            self._episode_len_curriculum_stage_successes
+        )
+        if stage_idx != self._episode_len_curriculum_stage_idx:
+            self._episode_len_curriculum_stage_idx = stage_idx
+            _apply_stage_overrides(stage_cfg)
+
+        def _stage_value(name, default):
+            if stage_cfg is None:
+                return default
+            value = getattr(stage_cfg, name)
+            return default if value is None else value
+
         round_completed = False
         speed_updated = False
-        required_streak_rounds = max(int(cfg.required_streak_rounds), 1)
-        target_episode_count = cfg.round_episode_count if cfg.round_episode_count > 0 else self.num_envs
+        required_streak_rounds = max(int(_stage_value("required_streak_rounds", cfg.required_streak_rounds)), 1)
+        round_episode_count = int(_stage_value("round_episode_count", cfg.round_episode_count))
+        target_episode_count = round_episode_count if round_episode_count > 0 else self.num_envs
 
         episode_lengths = self.episode_length_buf[env_ids].float()
         valid_mask = episode_lengths > 0.0
@@ -405,8 +495,10 @@ class BaseEnv(VecEnv):
                 self._episode_reward_curriculum_last_round_mean = self._episode_reward_curriculum_sum / max(
                     self._episode_len_curriculum_count, 1
                 )
-                round_threshold = float(self.max_episode_length) * float(cfg.episode_length_ratio)
-                reward_threshold = float(cfg.min_mean_reward)
+                round_threshold = float(self.max_episode_length) * float(
+                    _stage_value("episode_length_ratio", cfg.episode_length_ratio)
+                )
+                reward_threshold = float(_stage_value("min_mean_reward", cfg.min_mean_reward))
                 if (
                     self._episode_len_curriculum_last_round_mean >= round_threshold
                     and self._episode_reward_curriculum_last_round_mean >= reward_threshold
@@ -420,20 +512,69 @@ class BaseEnv(VecEnv):
                 self._episode_reward_curriculum_sum = 0.0
 
                 if self._episode_len_curriculum_streak >= required_streak_rounds:
+                    self._episode_len_curriculum_stage_successes += 1
                     x_min, x_max = self.command_generator.cfg.ranges.lin_vel_x
-                    if float(cfg.max_forward_speed) > 0.0 and np.isfinite(float(cfg.max_forward_speed)):
-                        new_x_max = min(float(x_max) + float(cfg.speed_increment), float(cfg.max_forward_speed))
+                    speed_increment = float(_stage_value("speed_increment", cfg.speed_increment))
+                    max_forward_speed = float(_stage_value("max_forward_speed", cfg.max_forward_speed))
+                    if max_forward_speed > 0.0 and np.isfinite(max_forward_speed):
+                        new_x_max = min(float(x_max) + speed_increment, max_forward_speed)
                     else:
-                        new_x_max = float(x_max) + float(cfg.speed_increment)
+                        new_x_max = float(x_max) + speed_increment
 
                     if new_x_max > float(x_max):
                         new_x_range = (float(x_min), float(new_x_max))
                         self.command_generator.cfg.ranges.lin_vel_x = new_x_range
                         self.cfg.commands.ranges.lin_vel_x = new_x_range
-                        self._episode_len_curriculum_updates += 1
+                        self._episode_len_curriculum_speed_updates += 1
                         speed_updated = True
 
                     self._episode_len_curriculum_streak = 0
+
+                    if getattr(cfg, "stages", None):
+                        (
+                            new_stage_cfg,
+                            new_stage_idx,
+                            new_stage_max_updates,
+                            new_stage_progress,
+                        ) = _resolve_stage(self._episode_len_curriculum_stage_successes)
+                        if new_stage_idx != self._episode_len_curriculum_stage_idx:
+                            self._episode_len_curriculum_stage_idx = new_stage_idx
+                            stage_cfg = new_stage_cfg
+                            stage_idx = new_stage_idx
+                            stage_max_updates = new_stage_max_updates
+                            stage_progress = new_stage_progress
+                            _apply_stage_overrides(stage_cfg)
+                else:
+                    # If we're in an infinite stage and still missing reward targets, gently
+                    # increase tracking weights to help convergence.
+                    if stage_cfg is not None and int(getattr(stage_cfg, "max_updates", -1)) < 0:
+                        if self._episode_reward_curriculum_last_round_mean < reward_threshold:
+                            def _bump_weight(term_name: str, inc_attr: str, max_attr: str):
+                                inc = getattr(stage_cfg, inc_attr, None)
+                                if inc is None or float(inc) <= 0.0:
+                                    return
+                                max_w = getattr(stage_cfg, max_attr, None)
+                                current = None
+                                if hasattr(self.cfg.reward, term_name):
+                                    current = float(getattr(self.cfg.reward, term_name).weight)
+                                if current is None:
+                                    return
+                                new_weight = current + float(inc)
+                                if max_w is not None:
+                                    new_weight = min(new_weight, float(max_w))
+                                if new_weight > current:
+                                    _apply_reward_weight(term_name, new_weight)
+
+                            _bump_weight(
+                                "track_lin_vel_xy_exp",
+                                "track_lin_vel_xy_exp_weight_increment",
+                                "track_lin_vel_xy_exp_weight_max",
+                            )
+                            _bump_weight(
+                                "track_ang_vel_z_exp",
+                                "track_ang_vel_z_exp_weight_increment",
+                                "track_ang_vel_z_exp_weight_max",
+                            )
 
         x_min, x_max = self.command_generator.cfg.ranges.lin_vel_x
         self.extras["log"].update(
@@ -444,26 +585,42 @@ class BaseEnv(VecEnv):
                 "Curriculum/episode_length_streak": float(self._episode_len_curriculum_streak),
                 "Curriculum/forward_speed_min": float(x_min),
                 "Curriculum/forward_speed_max": float(x_max),
-                "Curriculum/speed_updates": float(self._episode_len_curriculum_updates),
+                "Curriculum/stage_successes": float(self._episode_len_curriculum_stage_successes),
+                "Curriculum/speed_updates": float(self._episode_len_curriculum_speed_updates),
+                "Curriculum/termination_contact_enabled": float(self._termination_contact_enabled),
+                "Curriculum/termination_contact_delay_s": float(self._termination_contact_delay_s),
             }
         )
+        if hasattr(self.cfg.reward, "track_lin_vel_xy_exp"):
+            self.extras["log"]["Curriculum/track_lin_vel_xy_exp_weight"] = float(
+                self.cfg.reward.track_lin_vel_xy_exp.weight
+            )
+        if hasattr(self.cfg.reward, "track_ang_vel_z_exp"):
+            self.extras["log"]["Curriculum/track_ang_vel_z_exp_weight"] = float(
+                self.cfg.reward.track_ang_vel_z_exp.weight
+            )
+        if stage_cfg is not None:
+            self.extras["log"].update(
+                {
+                    "Curriculum/stage_index": float(stage_idx),
+                    "Curriculum/stage_max_updates": float(stage_max_updates),
+                    "Curriculum/stage_progress": float(stage_progress),
+                }
+            )
 
         if cfg.print_status and round_completed:
             step = self.sim_step_counter // self.cfg.sim.decimation
-            cap_text = (
-                f"{float(cfg.max_forward_speed):.3f}"
-                if float(cfg.max_forward_speed) > 0.0 and np.isfinite(float(cfg.max_forward_speed))
-                else "inf"
-            )
+            max_forward_speed = float(_stage_value("max_forward_speed", cfg.max_forward_speed))
+            cap_text = f"{max_forward_speed:.3f}" if max_forward_speed > 0.0 and np.isfinite(max_forward_speed) else "inf"
             update_tag = " [speed+]" if speed_updated else ""
             print(
                 "[CURRICULUM][LeggedLab] "
                 f"step={step} round={self._episode_len_curriculum_round} "
                 f"mean_ep_len={self._episode_len_curriculum_last_round_mean:.2f}/{float(self.max_episode_length):.2f} "
-                f"mean_ep_rew={self._episode_reward_curriculum_last_round_mean:.2f}/{float(cfg.min_mean_reward):.2f} "
+                f"mean_ep_rew={self._episode_reward_curriculum_last_round_mean:.2f}/{float(_stage_value('min_mean_reward', cfg.min_mean_reward)):.2f} "
                 f"streak={self._episode_len_curriculum_streak}/{required_streak_rounds} "
                 f"lin_vel_x=({float(x_min):.3f}, {float(x_max):.3f}) "
-                f"cap={cap_text} updates={self._episode_len_curriculum_updates}{update_tag}"
+                f"cap={cap_text} updates={self._episode_len_curriculum_speed_updates} stage={stage_idx}{update_tag}"
             )
 
     def update_terrain_levels(self, env_ids):

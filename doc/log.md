@@ -67,3 +67,11 @@ TensorBoard 观察：
 
 # 2026-02-11_g1_flat 训练分析补充
 - `speed_updates=0`，课程未提速；主要原因是 `min_mean_reward=30`，当前最高均值约 22.10。
+
+# 2026-02-11_课程分级
+- 课程改为分级配置，每级可覆盖 `speed_increment`、`max_forward_speed`、`min_mean_reward` 等参数，最后一档为无限升级（无上限）。
+
+# 2026-02-11_课程细化与自适应权重
+- g1_flat 分级课程加入侧向/转向范围控制，并在恢复阶段限制前向/侧向范围。
+- 支持在无限提速阶段，当奖励长期达标失败时，缓慢提升 `track_lin_vel_xy_exp` / `track_ang_vel_z_exp` 权重（带上限）。
+- 课程阶段现可覆盖 `lin_vel_x/lin_vel_y/ang_vel_z` 与接触终止延时。
