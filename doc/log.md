@@ -93,3 +93,6 @@ TensorBoard 观察：
 - play.py 中 `--play_lin_vel_x` 被课程阶段覆盖：g1_flat 启用课程后，reset 会将 `lin_vel_x` 重置为当前 stage 的范围（例如 Stage0 的 -0.6~0.8），导致随机速度很低。
 - 另外 `rel_standing_envs=0.2` 会让 20% 环境强制站立，单看一个 env 容易误判“不动”。
 - 若想在 play 中按参数采样速度，建议禁用课程（`env_cfg.episode_length_curriculum.enable=False`），或固定速度区间。
+
+# 2026-02-12_15-24-07
+- 按用户要求保留当前 g1_flat 课程的本地修改（包含新增阶段与参数调整），并提交。

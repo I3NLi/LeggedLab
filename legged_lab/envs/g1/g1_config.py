@@ -152,7 +152,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
             # Stage 0: basic walking with small lateral/turn commands.
             EpisodeLengthCurriculumStageCfg(
                 max_updates=1,
-                termination_contact_delay_s=1.0,
+                # termination_contact_delay_s=1.0,
                 lin_vel_x=(-0.6, 0.8),
                 lin_vel_y=(-0.3, 0.3),
                 ang_vel_z=(-0.4, 0.4),
@@ -217,6 +217,17 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 track_lin_vel_xy_exp_weight=2.0,
                 track_ang_vel_z_exp_weight=2.0,
             ),
+              EpisodeLengthCurriculumStageCfg(
+                max_updates=2,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(-1, 3.0),
+                lin_vel_y=(-1, 1),
+                ang_vel_z=(-1, 1),
+                speed_increment=0.0,
+                min_mean_reward=25.0,
+                track_lin_vel_xy_exp_weight=2.0,
+                track_ang_vel_z_exp_weight=2.0,
+            ),
             # Stage 6: 3.0~3.5 m/s.
             EpisodeLengthCurriculumStageCfg(
                 max_updates=1,
@@ -236,6 +247,17 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 lin_vel_x=(3.5, 4.0),
                 lin_vel_y=(-0.4, 0.4),
                 ang_vel_z=(-0.4, 0.4),
+                speed_increment=0.0,
+                min_mean_reward=26.0,
+                track_lin_vel_xy_exp_weight=2.0,
+                track_ang_vel_z_exp_weight=2.0,
+            ),
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(-1, 4.0),
+                lin_vel_y=(-1, 1),
+                ang_vel_z=(-1, 1),
                 speed_increment=0.0,
                 min_mean_reward=26.0,
                 track_lin_vel_xy_exp_weight=2.0,
