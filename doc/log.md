@@ -75,3 +75,7 @@ TensorBoard 观察：
 - g1_flat 分级课程加入侧向/转向范围控制，并在恢复阶段限制前向/侧向范围。
 - 支持在无限提速阶段，当奖励长期达标失败时，缓慢提升 `track_lin_vel_xy_exp` / `track_ang_vel_z_exp` 权重（带上限）。
 - 课程阶段现可覆盖 `lin_vel_x/lin_vel_y/ang_vel_z` 与接触终止延时。
+
+# 2026-02-12_数据准备流程规范化
+- 统一在 `whole_body_tracking` 中使用 `scripts/video_to_motion_bundle.sh` 生成训练用 motion npz（视频→SMPL→SMPLX→GMR→CSV→NPZ）。
+- 产物按 `motions/<时间>-<视频名称>/` 管理，便于追溯与批量训练。
