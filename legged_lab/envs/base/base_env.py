@@ -546,9 +546,13 @@ class BaseEnv(VecEnv):
                             _apply_stage_overrides(stage_cfg)
                 else:
                     # If we're in an infinite stage and still missing reward targets, gently
-                    # increase tracking weights to help convergence.
+                    # increase tracking weights to help convergence. Only do this when the
+                    # mean episode length has reached 1000 steps (stable survival).
                     if stage_cfg is not None and int(getattr(stage_cfg, "max_updates", -1)) < 0:
-                        if self._episode_reward_curriculum_last_round_mean < reward_threshold:
+                        if (
+                            self._episode_reward_curriculum_last_round_mean < reward_threshold
+                            and self._episode_len_curriculum_last_round_mean >= 1000.0
+                        ):
                             def _bump_weight(term_name: str, inc_attr: str, max_attr: str):
                                 inc = getattr(stage_cfg, inc_attr, None)
                                 if inc is None or float(inc) <= 0.0:
