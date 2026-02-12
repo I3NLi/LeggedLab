@@ -142,16 +142,20 @@ class G1FlatEnvCfg(BaseEnvCfg):
         self.episode_length_curriculum.round_episode_count = 2048
         self.episode_length_curriculum.episode_length_ratio = 1
         self.episode_length_curriculum.required_streak_rounds = 1
-        self.episode_length_curriculum.speed_increment = 0.25
-        self.episode_length_curriculum.max_forward_speed = -1.0
-        self.episode_length_curriculum.min_mean_reward = 30.0
+        self.episode_length_curriculum.speed_increment = 0.0
+        self.episode_length_curriculum.max_forward_speed = 6.0
+        self.episode_length_curriculum.min_mean_reward = 25.0
         self.episode_length_curriculum.print_status = True
         # Staged curriculum: each stage overrides selected parameters.
-        # Keep explicit speed ranges to avoid unbounded forward-speed growth.
+        # Gradually increase forward speed, with special focus on 2~3 m/s.
         self.episode_length_curriculum.stages = [
             # Stage 0: basic walking with small lateral/turn commands.
             EpisodeLengthCurriculumStageCfg(
                 max_updates=1,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(-0.6, 0.8),
+                lin_vel_y=(-0.3, 0.3),
+                ang_vel_z=(-0.4, 0.4),
                 speed_increment=0.0,
                 min_mean_reward=20.0,
             ),
@@ -167,34 +171,33 @@ class G1FlatEnvCfg(BaseEnvCfg):
             ),
             # Stage 2: moderate speed with limited lateral/turning.
             EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
-                termination_contact_enabled=True,
+                max_updates=1,
                 termination_contact_delay_s=1.0,
-                lin_vel_x=(-1.6, 1.6),
-                lin_vel_y=(-1, 1),
-                ang_vel_z=(-1, 1),
+                lin_vel_x=(0.8, 1.6),
+                lin_vel_y=(-0.6, 0.6),
+                ang_vel_z=(-0.6, 0.6),
                 speed_increment=0.0,
-                min_mean_reward=20.0,
+                min_mean_reward=22.0,
                 track_lin_vel_xy_exp_weight=1.5,
                 track_ang_vel_z_exp_weight=1.5,
             ),
-            # Stage 3: add stronger turning and lateral range.
+            # Stage 3: faster band before entering 2~3 m/s focus.
             EpisodeLengthCurriculumStageCfg(
                 max_updates=1,
                 termination_contact_delay_s=1.0,
-                lin_vel_x=(-2, 2),
-                lin_vel_y=(-1.5, 1.5),
-                ang_vel_z=(-1.5, 1.5),
+                lin_vel_x=(1.6, 2.2),
+                lin_vel_y=(-0.6, 0.6),
+                ang_vel_z=(-0.6, 0.6),
                 speed_increment=0.0,
-                min_mean_reward=25.0,
+                min_mean_reward=23.0,
                 track_lin_vel_xy_exp_weight=1.5,
                 track_ang_vel_z_exp_weight=1.5,
             ),
-            # Stage 4: focus on forward speed in a tight band (2~3 m/s).
+            # Stage 4: focus on forward speed in a tight band (2.0~2.5 m/s).
             EpisodeLengthCurriculumStageCfg(
                 max_updates=2,
                 termination_contact_delay_s=1.0,
-                lin_vel_x=(2.0, 3.0),
+                lin_vel_x=(2.0, 2.5),
                 lin_vel_y=(-0.5, 0.5),
                 ang_vel_z=(-0.5, 0.5),
                 speed_increment=0.0,
@@ -202,21 +205,105 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 track_lin_vel_xy_exp_weight=2.0,
                 track_ang_vel_z_exp_weight=2.0,
             ),
-            # Stage 5: open variable speed with a hard cap to avoid runaway curriculum.
+            # Stage 5: focus on forward speed in a tight band (2.5~3.0 m/s).
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=2,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(2.5, 3.0),
+                lin_vel_y=(-0.5, 0.5),
+                ang_vel_z=(-0.5, 0.5),
+                speed_increment=0.0,
+                min_mean_reward=25.0,
+                track_lin_vel_xy_exp_weight=2.0,
+                track_ang_vel_z_exp_weight=2.0,
+            ),
+            # Stage 6: 3.0~3.5 m/s.
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(3.0, 3.5),
+                lin_vel_y=(-0.4, 0.4),
+                ang_vel_z=(-0.4, 0.4),
+                speed_increment=0.0,
+                min_mean_reward=25.0,
+                track_lin_vel_xy_exp_weight=2.0,
+                track_ang_vel_z_exp_weight=2.0,
+            ),
+            # Stage 7: 3.5~4.0 m/s.
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(3.5, 4.0),
+                lin_vel_y=(-0.4, 0.4),
+                ang_vel_z=(-0.4, 0.4),
+                speed_increment=0.0,
+                min_mean_reward=26.0,
+                track_lin_vel_xy_exp_weight=2.0,
+                track_ang_vel_z_exp_weight=2.0,
+            ),
+            # Stage 8: 4.0~4.5 m/s.
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(4.0, 4.5),
+                lin_vel_y=(-0.3, 0.3),
+                ang_vel_z=(-0.3, 0.3),
+                speed_increment=0.0,
+                min_mean_reward=26.0,
+                track_lin_vel_xy_exp_weight=2.5,
+                track_ang_vel_z_exp_weight=2.5,
+            ),
+            # Stage 9: 4.5~5.0 m/s.
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(4.5, 5.0),
+                lin_vel_y=(-0.3, 0.3),
+                ang_vel_z=(-0.3, 0.3),
+                speed_increment=0.0,
+                min_mean_reward=27.0,
+                track_lin_vel_xy_exp_weight=2.5,
+                track_ang_vel_z_exp_weight=2.5,
+            ),
+            # Stage 10: 5.0~5.5 m/s.
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(5.0, 5.5),
+                lin_vel_y=(-0.2, 0.2),
+                ang_vel_z=(-0.2, 0.2),
+                speed_increment=0.0,
+                min_mean_reward=27.0,
+                track_lin_vel_xy_exp_weight=2.5,
+                track_ang_vel_z_exp_weight=2.5,
+            ),
+            # Stage 11: 5.5~6.0 m/s.
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(5.5, 6.0),
+                lin_vel_y=(-0.2, 0.2),
+                ang_vel_z=(-0.2, 0.2),
+                speed_increment=0.0,
+                min_mean_reward=28.0,
+                track_lin_vel_xy_exp_weight=2.5,
+                track_ang_vel_z_exp_weight=2.5,
+            ),
+            # Stage 12: open variable speed with a hard cap at 6 m/s.
             # If rewards stall, slowly increase tracking weights to help convergence.
             EpisodeLengthCurriculumStageCfg(
                 max_updates=-1,
                 termination_contact_delay_s=1.0,
-                lin_vel_x=(-2, 3),
-                lin_vel_y=(-2, 2),
-                ang_vel_z=(-2, 2),
+                lin_vel_x=(-2.0, 6.0),
+                lin_vel_y=(-2.0, 2.0),
+                ang_vel_z=(-2.0, 2.0),
                 speed_increment=0.0,
-                max_forward_speed=3.0,
-                min_mean_reward=25.0,
-                track_lin_vel_xy_exp_weight=2.0,
+                max_forward_speed=6.0,
+                min_mean_reward=28.0,
+                track_lin_vel_xy_exp_weight=2.5,
                 track_lin_vel_xy_exp_weight_increment=0.05,
                 track_lin_vel_xy_exp_weight_max=3.0,
-                track_ang_vel_z_exp_weight=2.0,
+                track_ang_vel_z_exp_weight=2.5,
                 track_ang_vel_z_exp_weight_increment=0.05,
                 track_ang_vel_z_exp_weight_max=3.0,
             ),
