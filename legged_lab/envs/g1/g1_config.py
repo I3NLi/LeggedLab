@@ -147,7 +147,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
         self.episode_length_curriculum.min_mean_reward = 30.0
         self.episode_length_curriculum.print_status = True
         # Staged curriculum: each stage overrides selected parameters.
-        # Final stage uses max_updates < 0 (infinite upgrades, no cap).
+        # Keep explicit speed ranges to avoid unbounded forward-speed growth.
         self.episode_length_curriculum.stages = [
             # Stage 0: basic walking with small lateral/turn commands.
             EpisodeLengthCurriculumStageCfg(
@@ -155,24 +155,25 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 speed_increment=0.0,
                 min_mean_reward=20.0,
             ),
-            # Stage 1: fall-recovery practice (allow longer contact before termination).
+            # Stage 1: fall-recovery practice (reduced command ranges).
             EpisodeLengthCurriculumStageCfg(
                 max_updates=1,
-                termination_contact_delay_s=2.0,
+                termination_contact_delay_s=1.0,
                 lin_vel_x=(-1, 1),
                 lin_vel_y=(-0.5, 0.5),
                 ang_vel_z=(-0.5, 0.5),
                 speed_increment=0.0,
                 min_mean_reward=20.0,
             ),
-            # Stage 2: ramp higher forward speed while keeping limited lateral/turning.
+            # Stage 2: moderate speed with limited lateral/turning.
             EpisodeLengthCurriculumStageCfg(
-                max_updates=3,
+                max_updates=2,
                 termination_contact_enabled=True,
-                lin_vel_x=(-2, 2),
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(-1.6, 1.6),
                 lin_vel_y=(-1, 1),
                 ang_vel_z=(-1, 1),
-                max_forward_speed=1.6,
+                speed_increment=0.0,
                 min_mean_reward=20.0,
                 track_lin_vel_xy_exp_weight=1.5,
                 track_ang_vel_z_exp_weight=1.5,
@@ -180,19 +181,37 @@ class G1FlatEnvCfg(BaseEnvCfg):
             # Stage 3: add stronger turning and lateral range.
             EpisodeLengthCurriculumStageCfg(
                 max_updates=1,
-                speed_increment=1.0,
-                min_mean_reward=30.0,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(-2, 2),
+                lin_vel_y=(-1.5, 1.5),
+                ang_vel_z=(-1.5, 1.5),
+                speed_increment=0.0,
+                min_mean_reward=25.0,
                 track_lin_vel_xy_exp_weight=1.5,
                 track_ang_vel_z_exp_weight=1.5,
             ),
-            # Stage 4: full lateral/turn commands + unlimited forward-speed curriculum.
+            # Stage 4: focus on forward speed in a tight band (2~3 m/s).
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=2,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(2.0, 3.0),
+                lin_vel_y=(-0.5, 0.5),
+                ang_vel_z=(-0.5, 0.5),
+                speed_increment=0.0,
+                min_mean_reward=25.0,
+                track_lin_vel_xy_exp_weight=2.0,
+                track_ang_vel_z_exp_weight=2.0,
+            ),
+            # Stage 5: open variable speed with a hard cap to avoid runaway curriculum.
             # If rewards stall, slowly increase tracking weights to help convergence.
             EpisodeLengthCurriculumStageCfg(
                 max_updates=-1,
-                lin_vel_y=(-0.5, 0.5),
-                ang_vel_z=(-1.0, 1.0),
-                speed_increment=0.5,
-                max_forward_speed=-1.0,
+                termination_contact_delay_s=1.0,
+                lin_vel_x=(-2, 3),
+                lin_vel_y=(-2, 2),
+                ang_vel_z=(-2, 2),
+                speed_increment=0.0,
+                max_forward_speed=3.0,
                 min_mean_reward=25.0,
                 track_lin_vel_xy_exp_weight=2.0,
                 track_lin_vel_xy_exp_weight_increment=0.05,
