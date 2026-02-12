@@ -79,3 +79,8 @@ TensorBoard 观察：
 # 2026-02-12_数据准备流程规范化
 - 统一在 `whole_body_tracking` 中使用 `scripts/video_to_motion_bundle.sh` 生成训练用 motion npz（视频→SMPL→SMPLX→GMR→CSV→NPZ）。
 - 产物按 `motions/<时间>-<视频名称>/` 管理，便于追溯与批量训练。
+
+# 2026-02-12_10-48-42
+- 放弃 SiLU，恢复默认激活函数（ELU）。
+- 训练不移动的主要原因：课程把 forward_speed_max 提到极高（无上限 + 速度增量），命令分布严重失真；且阶段覆盖导致终止延时一直停留在 2s。
+- 计划：在课程中加入 [2,3] 速度区间的专项阶段，并在最终阶段放开变速但加速度上限（避免继续无限增大）。
