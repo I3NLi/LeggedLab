@@ -33,8 +33,8 @@ from legged_lab.terrains import GRAVEL_TERRAINS_CFG, ROUGH_TERRAINS_CFG
 @configclass
 class G1RewardCfg(RewardCfg):
     # Command tracking rewards (drive toward commanded linear/angular velocity).
-    track_lin_vel_xy_exp = RewTerm(func=mdp.track_lin_vel_xy_yaw_frame_exp, weight=1.0, params={"std": 0.5})
-    track_ang_vel_z_exp = RewTerm(func=mdp.track_ang_vel_z_world_exp, weight=1.0, params={"std": 0.5})
+    track_lin_vel_xy_exp = RewTerm(func=mdp.track_lin_vel_xy_yaw_frame_exp, weight=1.0, params={"std": 1.0})
+    track_ang_vel_z_exp = RewTerm(func=mdp.track_ang_vel_z_world_exp, weight=1.0, params={"std": 0.8})
     # Stability and smoothness penalties.
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-1.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
@@ -195,7 +195,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
             ),
             # Stage 4: focus on forward speed in a tight band (2.0~2.5 m/s).
             EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
+                max_updates=10,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(2.0, 2.5),
                 lin_vel_y=(-0.5, 0.5),
@@ -207,7 +207,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
             ),
             # Stage 5: focus on forward speed in a tight band (2.5~3.0 m/s).
             EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
+                max_updates=10,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(2.5, 3.0),
                 lin_vel_y=(-0.5, 0.5),
@@ -237,8 +237,10 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 ang_vel_z=(-0.4, 0.4),
                 speed_increment=0.0,
                 min_mean_reward=25.0,
-                track_lin_vel_xy_exp_weight=2.0,
-                track_ang_vel_z_exp_weight=2.0,
+                track_lin_vel_xy_exp_weight=2.5,
+                track_ang_vel_z_exp_weight=2.5,
+                energy_weight=-5.0e-4,
+                action_rate_l2_weight=-5.0e-3,
             ),
             # Stage 7: 3.5~4.0 m/s.
             EpisodeLengthCurriculumStageCfg(
@@ -249,8 +251,10 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 ang_vel_z=(-0.4, 0.4),
                 speed_increment=0.0,
                 min_mean_reward=26.0,
-                track_lin_vel_xy_exp_weight=2.0,
-                track_ang_vel_z_exp_weight=2.0,
+                track_lin_vel_xy_exp_weight=2.7,
+                track_ang_vel_z_exp_weight=2.7,
+                energy_weight=-5.0e-4,
+                action_rate_l2_weight=-5.0e-3,
             ),
             EpisodeLengthCurriculumStageCfg(
                 max_updates=1,
@@ -272,8 +276,10 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 ang_vel_z=(-0.3, 0.3),
                 speed_increment=0.0,
                 min_mean_reward=26.0,
-                track_lin_vel_xy_exp_weight=2.5,
-                track_ang_vel_z_exp_weight=2.5,
+                track_lin_vel_xy_exp_weight=2.8,
+                track_ang_vel_z_exp_weight=2.8,
+                energy_weight=-5.0e-4,
+                action_rate_l2_weight=-5.0e-3,
             ),
             # Stage 9: 4.5~5.0 m/s.
             EpisodeLengthCurriculumStageCfg(
@@ -284,8 +290,10 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 ang_vel_z=(-0.3, 0.3),
                 speed_increment=0.0,
                 min_mean_reward=27.0,
-                track_lin_vel_xy_exp_weight=2.5,
-                track_ang_vel_z_exp_weight=2.5,
+                track_lin_vel_xy_exp_weight=2.9,
+                track_ang_vel_z_exp_weight=2.9,
+                energy_weight=-5.0e-4,
+                action_rate_l2_weight=-5.0e-3,
             ),
             # Stage 10: 5.0~5.5 m/s.
             EpisodeLengthCurriculumStageCfg(
@@ -296,8 +304,10 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 ang_vel_z=(-0.2, 0.2),
                 speed_increment=0.0,
                 min_mean_reward=27.0,
-                track_lin_vel_xy_exp_weight=2.5,
-                track_ang_vel_z_exp_weight=2.5,
+                track_lin_vel_xy_exp_weight=3.0,
+                track_ang_vel_z_exp_weight=3.0,
+                energy_weight=-5.0e-4,
+                action_rate_l2_weight=-5.0e-3,
             ),
             # Stage 11: 5.5~6.0 m/s.
             EpisodeLengthCurriculumStageCfg(
@@ -308,8 +318,10 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 ang_vel_z=(-0.2, 0.2),
                 speed_increment=0.0,
                 min_mean_reward=28.0,
-                track_lin_vel_xy_exp_weight=2.5,
-                track_ang_vel_z_exp_weight=2.5,
+                track_lin_vel_xy_exp_weight=3.0,
+                track_ang_vel_z_exp_weight=3.0,
+                energy_weight=-5.0e-4,
+                action_rate_l2_weight=-5.0e-3,
             ),
             # Stage 12: open variable speed with a hard cap at 6 m/s.
             # If rewards stall, slowly increase tracking weights to help convergence.
@@ -322,12 +334,14 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 speed_increment=0.0,
                 max_forward_speed=6.0,
                 min_mean_reward=28.0,
-                track_lin_vel_xy_exp_weight=2.5,
+                track_lin_vel_xy_exp_weight=3.0,
                 track_lin_vel_xy_exp_weight_increment=0.05,
                 track_lin_vel_xy_exp_weight_max=3.0,
-                track_ang_vel_z_exp_weight=2.5,
+                track_ang_vel_z_exp_weight=3.0,
                 track_ang_vel_z_exp_weight_increment=0.05,
                 track_ang_vel_z_exp_weight_max=3.0,
+                energy_weight=-5.0e-4,
+                action_rate_l2_weight=-5.0e-3,
             ),
         ]
 

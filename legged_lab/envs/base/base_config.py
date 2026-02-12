@@ -138,6 +138,9 @@ class EpisodeLengthCurriculumStageCfg:
     # Optional reward weight overrides for tracking terms.
     track_lin_vel_xy_exp_weight: float | None = None
     track_ang_vel_z_exp_weight: float | None = None
+    # Optional reward weight overrides for regularization terms.
+    energy_weight: float | None = None
+    action_rate_l2_weight: float | None = None
     # Optional reward weight schedule for infinite stages.
     track_lin_vel_xy_exp_weight_increment: float | None = None
     track_lin_vel_xy_exp_weight_max: float | None = None
