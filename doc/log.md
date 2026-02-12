@@ -88,3 +88,8 @@ TensorBoard 观察：
 # 2026-02-12_10-57-05
 - 需求：保留 rel_standing_envs，不关闭；增加多级课程，逐步提速到 6 m/s；在 2~3 m/s 区间重点训练后再放开变速。
 - 计划：重做 g1_flat 课程阶段，细化速度区间（含 2~3 m/s 多阶段），最终阶段放开到 [-2, 6] 并加硬上限 6。
+
+# 2026-02-12_15-13-42
+- play.py 中 `--play_lin_vel_x` 被课程阶段覆盖：g1_flat 启用课程后，reset 会将 `lin_vel_x` 重置为当前 stage 的范围（例如 Stage0 的 -0.6~0.8），导致随机速度很低。
+- 另外 `rel_standing_envs=0.2` 会让 20% 环境强制站立，单看一个 env 容易误判“不动”。
+- 若想在 play 中按参数采样速度，建议禁用课程（`env_cfg.episode_length_curriculum.enable=False`），或固定速度区间。
