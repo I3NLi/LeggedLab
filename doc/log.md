@@ -96,3 +96,6 @@ TensorBoard 观察：
 
 # 2026-02-12_15-24-07
 - 按用户要求保留当前 g1_flat 课程的本地修改（包含新增阶段与参数调整），并提交。
+
+# 2026-02-12_15-25-17
+- play.py 禁用课程：`env_cfg.episode_length_curriculum.enable = False`，避免 play 参数被阶段覆盖。

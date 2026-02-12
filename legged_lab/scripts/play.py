@@ -58,6 +58,7 @@ def play():
 
     env_cfg.noise.add_noise = False
     env_cfg.domain_rand.events.push_robot = None
+    env_cfg.episode_length_curriculum.enable = False
     env_cfg.scene.max_episode_length_s = 40.0
     env_cfg.scene.num_envs = 50
     env_cfg.scene.env_spacing = 2.5
