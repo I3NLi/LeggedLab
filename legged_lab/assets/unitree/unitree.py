@@ -19,11 +19,18 @@ The following configurations are available:
 Reference: https://github.com/unitreerobotics/unitree_ros
 """
 
+import os
+from pathlib import Path
+
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.assets.articulation import ArticulationCfg
 
 from legged_lab.assets import ISAAC_ASSET_DIR
+
+# Use T1 assets directly from HoloMotion's vendored GMR repository.
+HOLOMOTION_GMR_ROOT = Path(os.environ.get("HOLOMOTION_GMR_ROOT", "/home/hiyio/HoloMotion/thirdparties/GMR"))
+T1_URDF_PATH = HOLOMOTION_GMR_ROOT / "assets" / "booster_t1" / "T1_serial.urdf"
 
 H1_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
@@ -330,6 +337,128 @@ G1_CFG = ArticulationCfg(
                 "right_wrist_pitch_joint": 1.068,
                 "right_wrist_yaw_joint": 1.068,
             },
+            armature=0.01,
+        ),
+    },
+)
+
+
+T1_CFG = ArticulationCfg(
+    spawn=sim_utils.UrdfFileCfg(
+        asset_path=str(T1_URDF_PATH),
+        replace_cylinders_with_capsules=True,
+        activate_contact_sensors=True,
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(
+            disable_gravity=False,
+            retain_accelerations=False,
+            linear_damping=0.0,
+            angular_damping=0.0,
+            max_linear_velocity=1000.0,
+            max_angular_velocity=1000.0,
+            max_depenetration_velocity=1.0,
+        ),
+        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            enabled_self_collisions=True, solver_position_iteration_count=4, solver_velocity_iteration_count=1
+        ),
+        joint_drive=sim_utils.UrdfConverterCfg.JointDriveCfg(
+            gains=sim_utils.UrdfConverterCfg.JointDriveCfg.PDGainsCfg(stiffness=0.0, damping=0.0)
+        ),
+    ),
+    init_state=ArticulationCfg.InitialStateCfg(
+        pos=(0.0, 0.0, 0.90),
+        joint_pos={
+            "Left_Hip_Pitch": -0.20,
+            "Right_Hip_Pitch": -0.20,
+            "Left_Knee_Pitch": 0.42,
+            "Right_Knee_Pitch": 0.42,
+            "Left_Ankle_Pitch": -0.22,
+            "Right_Ankle_Pitch": -0.22,
+            "Left_Shoulder_Pitch": 0.25,
+            "Right_Shoulder_Pitch": 0.25,
+            "Left_Shoulder_Roll": 0.10,
+            "Right_Shoulder_Roll": -0.10,
+            "Left_Elbow_Pitch": 0.50,
+            "Right_Elbow_Pitch": 0.50,
+        },
+        joint_vel={".*": 0.0},
+    ),
+    soft_joint_pos_limit_factor=0.90,
+    actuators={
+        "head": ImplicitActuatorCfg(
+            joint_names_expr=["AAHead_yaw", "Head_pitch"],
+            effort_limit_sim=7.0,
+            velocity_limit_sim=12.56,
+            stiffness=20.0,
+            damping=1.0,
+            armature=0.01,
+        ),
+        "arms": ImplicitActuatorCfg(
+            joint_names_expr=[
+                "Left_Shoulder_Pitch",
+                "Left_Shoulder_Roll",
+                "Left_Elbow_Pitch",
+                "Left_Elbow_Yaw",
+                "Right_Shoulder_Pitch",
+                "Right_Shoulder_Roll",
+                "Right_Elbow_Pitch",
+                "Right_Elbow_Yaw",
+            ],
+            effort_limit_sim=18.0,
+            velocity_limit_sim=18.84,
+            stiffness=40.0,
+            damping=2.0,
+            armature=0.01,
+        ),
+        "waist": ImplicitActuatorCfg(
+            joint_names_expr=["Waist"],
+            effort_limit_sim=30.0,
+            velocity_limit_sim=18.84,
+            stiffness=35.0,
+            damping=1.5,
+            armature=0.01,
+        ),
+        "legs": ImplicitActuatorCfg(
+            joint_names_expr=[
+                "Left_Hip_Pitch",
+                "Left_Hip_Roll",
+                "Left_Hip_Yaw",
+                "Left_Knee_Pitch",
+                "Right_Hip_Pitch",
+                "Right_Hip_Roll",
+                "Right_Hip_Yaw",
+                "Right_Knee_Pitch",
+            ],
+            effort_limit_sim={
+                "Left_Hip_Pitch": 45.0,
+                "Left_Hip_Roll": 30.0,
+                "Left_Hip_Yaw": 30.0,
+                "Left_Knee_Pitch": 60.0,
+                "Right_Hip_Pitch": 45.0,
+                "Right_Hip_Roll": 30.0,
+                "Right_Hip_Yaw": 30.0,
+                "Right_Knee_Pitch": 60.0,
+            },
+            velocity_limit_sim=18.84,
+            stiffness=80.0,
+            damping=4.0,
+            armature=0.01,
+        ),
+        "feet": ImplicitActuatorCfg(
+            joint_names_expr=[
+                "Left_Ankle_Pitch",
+                "Left_Ankle_Roll",
+                "Right_Ankle_Pitch",
+                "Right_Ankle_Roll",
+            ],
+            effort_limit_sim={
+                "Left_Ankle_Pitch": 20.0,
+                "Left_Ankle_Roll": 15.0,
+                "Right_Ankle_Pitch": 20.0,
+                "Right_Ankle_Roll": 15.0,
+            },
+            velocity_limit_sim=18.84,
+            stiffness=60.0,
+            damping=3.0,
             armature=0.01,
         ),
     },
