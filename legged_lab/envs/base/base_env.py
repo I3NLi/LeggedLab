@@ -454,6 +454,7 @@ class BaseEnv(VecEnv):
             _apply_reward_weight("track_ang_vel_z_exp", stage_cfg.track_ang_vel_z_exp_weight)
             _apply_reward_weight("energy", stage_cfg.energy_weight)
             _apply_reward_weight("action_rate_l2", stage_cfg.action_rate_l2_weight)
+            _apply_reward_weight("joint_deviation_arms", stage_cfg.joint_deviation_arms_weight)
 
         stage_cfg, stage_idx, stage_max_updates, stage_progress = _resolve_stage(
             self._episode_len_curriculum_stage_successes
