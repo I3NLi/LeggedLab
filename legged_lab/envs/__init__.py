@@ -30,12 +30,6 @@ from legged_lab.envs.h1.h1_config import (
     H1RoughAgentCfg,
     H1RoughEnvCfg,
 )
-from legged_lab.envs.t1.t1_config import (
-    T1FlatAgentCfg,
-    T1FlatEnvCfg,
-    T1RoughAgentCfg,
-    T1RoughEnvCfg,
-)
 from legged_lab.utils.task_registry import task_registry
 
 task_registry.register("h1_flat", BaseEnv, H1FlatEnvCfg(), H1FlatAgentCfg())
@@ -44,5 +38,3 @@ task_registry.register("g1_flat", BaseEnv, G1FlatEnvCfg(), G1FlatAgentCfg())
 task_registry.register("g1_rough", BaseEnv, G1RoughEnvCfg(), G1RoughAgentCfg())
 task_registry.register("gr2_flat", BaseEnv, GR2FlatEnvCfg(), GR2FlatAgentCfg())
 task_registry.register("gr2_rough", BaseEnv, GR2RoughEnvCfg(), GR2RoughAgentCfg())
-task_registry.register("t1_flat", BaseEnv, T1FlatEnvCfg(), T1FlatAgentCfg())
-task_registry.register("t1_rough", BaseEnv, T1RoughEnvCfg(), T1RoughAgentCfg())
