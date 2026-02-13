@@ -31,6 +31,12 @@ parser.add_argument("--seed", type=int, default=None, help="Seed used for the en
 parser.add_argument("--play_lin_vel_x", type=float, default=0.6, help="Fixed linear velocity command on x-axis.")
 parser.add_argument("--play_lin_vel_y", type=float, default=0.0, help="Fixed linear velocity command on y-axis.")
 parser.add_argument("--play_heading", type=float, default=0.0, help="Fixed heading command.")
+# Export-only mode is useful for headless batch jobs that only need policy artifacts.
+parser.add_argument(
+    "--export_only",
+    action="store_true",
+    help="Export policy to the run's exported/ directory and exit (use with --headless).",
+)
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
@@ -103,6 +109,9 @@ def play():
     export_policy_as_onnx(
         runner.alg.policy, normalizer=runner.obs_normalizer, path=export_model_dir, filename="policy.onnx"
     )
+    if args_cli.export_only:
+        print(f"[INFO] Exported policy artifacts to: {export_model_dir}")
+        return
 
     if not args_cli.headless:
         from legged_lab.utils.keyboard import Keyboard
