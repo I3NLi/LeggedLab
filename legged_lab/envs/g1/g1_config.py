@@ -36,7 +36,7 @@ class G1RewardCfg(RewardCfg):
     track_lin_vel_xy_exp = RewTerm(func=mdp.track_lin_vel_xy_yaw_frame_exp, weight=1.0, params={"std": 1.0})
     track_ang_vel_z_exp = RewTerm(func=mdp.track_ang_vel_z_world_exp, weight=1.0, params={"std": 0.8})
     # Stability and smoothness penalties.
-    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-1.0)
+    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=0.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     energy = RewTerm(func=mdp.energy, weight=-1e-3)
     dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
@@ -53,9 +53,9 @@ class G1RewardCfg(RewardCfg):
         params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=".*ankle_roll.*"), "threshold": 1.0},
     )
     body_orientation_l2 = RewTerm(
-        func=mdp.body_orientation_l2, params={"asset_cfg": SceneEntityCfg("robot", body_names=".*torso.*")}, weight=-2.0
+        func=mdp.body_orientation_l2, params={"asset_cfg": SceneEntityCfg("robot", body_names=".*torso.*")}, weight=0.0
     )
-    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-1.0)
+    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=0.0)
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
     # Gait shaping: encourage alternating single-stance timing.
     feet_air_time = RewTerm(
@@ -97,13 +97,13 @@ class G1RewardCfg(RewardCfg):
         weight=-0.15,
         params={
             "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*_hip_yaw.*", ".*_hip_roll.*", ".*_shoulder_pitch.*", ".*_elbow.*"]
+                "robot", joint_names=[".*_hip_yaw.*", ".*_hip_roll.*"]
             )
         },
     )
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.2,
+        weight=0.0,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot", joint_names=[".*waist.*", ".*_shoulder_roll.*", ".*_shoulder_yaw.*", ".*_wrist.*"]
@@ -143,7 +143,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
         self.episode_length_curriculum.episode_length_ratio = 1
         self.episode_length_curriculum.required_streak_rounds = 1
         self.episode_length_curriculum.speed_increment = 0.0
-        self.episode_length_curriculum.max_forward_speed = 6.0
+        self.episode_length_curriculum.max_forward_speed = -1.0
         self.episode_length_curriculum.min_mean_reward = 25.0
         self.episode_length_curriculum.print_status = True
         # Staged curriculum: each stage overrides selected parameters.
@@ -218,7 +218,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 track_ang_vel_z_exp_weight=2.0,
             ),
               EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
+                max_updates=5,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(-1, 3.0),
                 lin_vel_y=(-1, 1),
@@ -230,7 +230,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
             ),
             # Stage 6: 3.0~3.5 m/s.
             EpisodeLengthCurriculumStageCfg(
-                max_updates=1,
+                max_updates=5,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(3.0, 3.5),
                 lin_vel_y=(-0.4, 0.4),
@@ -241,11 +241,11 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 track_ang_vel_z_exp_weight=2.5,
                 energy_weight=-2.5e-4,
                 action_rate_l2_weight=-5.0e-3,
-                joint_deviation_arms_weight=-0.1,
+                joint_deviation_arms_weight=0.0,
             ),
             # Stage 7: 3.5~4.0 m/s.
             EpisodeLengthCurriculumStageCfg(
-                max_updates=1,
+                max_updates=5,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(3.5, 4.0),
                 lin_vel_y=(-0.4, 0.4),
@@ -256,10 +256,10 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 track_ang_vel_z_exp_weight=2.7,
                 energy_weight=-2.5e-4,
                 action_rate_l2_weight=-5.0e-3,
-                joint_deviation_arms_weight=-0.1,
+                joint_deviation_arms_weight=0.0,
             ),
             EpisodeLengthCurriculumStageCfg(
-                max_updates=1,
+                max_updates=5,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(-1, 4.0),
                 lin_vel_y=(-1, 1),
@@ -271,105 +271,105 @@ class G1FlatEnvCfg(BaseEnvCfg):
             ),
             # Stage 8: 4.0~4.5 m/s.
             EpisodeLengthCurriculumStageCfg(
-                max_updates=1,
+                max_updates=5,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(4.0, 4.5),
-                lin_vel_y=(-0.3, 0.3),
-                ang_vel_z=(-0.3, 0.3),
+                lin_vel_y=(-0.8, 0.8),
+                ang_vel_z=(-0.8, 0.8),
                 speed_increment=0.0,
                 min_mean_reward=26.0,
                 track_lin_vel_xy_exp_weight=2.8,
                 track_ang_vel_z_exp_weight=2.8,
                 energy_weight=-2.5e-4,
                 action_rate_l2_weight=-5.0e-3,
-                joint_deviation_arms_weight=-0.1,
+                joint_deviation_arms_weight=0.0,
             ),
             # Stage 9: 4.5~4.8 m/s.
             EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
+                max_updates=5,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(4.5, 4.8),
-                lin_vel_y=(-0.25, 0.25),
-                ang_vel_z=(-0.25, 0.25),
+                lin_vel_y=(-1.0, 1.0),
+                ang_vel_z=(-1.0, 1.0),
                 speed_increment=0.0,
-                min_mean_reward=27.0,
+                min_mean_reward=26.0,
                 track_lin_vel_xy_exp_weight=2.9,
                 track_ang_vel_z_exp_weight=2.9,
                 energy_weight=-2.0e-4,
                 action_rate_l2_weight=-5.0e-3,
-                joint_deviation_arms_weight=-0.1,
+                joint_deviation_arms_weight=0.0,
             ),
             # Stage 10: 4.8~5.1 m/s.
             EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
+                max_updates=5,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(4.8, 5.1),
-                lin_vel_y=(-0.2, 0.2),
-                ang_vel_z=(-0.2, 0.2),
+                lin_vel_y=(-1.2, 1.2),
+                ang_vel_z=(-1.2, 1.2),
                 speed_increment=0.0,
-                min_mean_reward=27.0,
+                min_mean_reward=25.0,
                 track_lin_vel_xy_exp_weight=3.0,
                 track_ang_vel_z_exp_weight=3.0,
                 energy_weight=-2.0e-4,
                 action_rate_l2_weight=-5.0e-3,
-                joint_deviation_arms_weight=-0.1,
+                joint_deviation_arms_weight=0.0,
             ),
             # Stage 11: 5.1~5.4 m/s.
             EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
+                max_updates=5,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(5.1, 5.4),
-                lin_vel_y=(-0.15, 0.15),
-                ang_vel_z=(-0.15, 0.15),
+                lin_vel_y=(-1.4, 1.4),
+                ang_vel_z=(-1.4, 1.4),
                 speed_increment=0.0,
-                min_mean_reward=28.0,
+                min_mean_reward=25.0,
                 track_lin_vel_xy_exp_weight=3.0,
                 track_ang_vel_z_exp_weight=3.0,
                 energy_weight=-2.0e-4,
                 action_rate_l2_weight=-5.0e-3,
-                joint_deviation_arms_weight=-0.1,
+                joint_deviation_arms_weight=0.0,
             ),
             # Stage 12: 5.4~5.7 m/s.
             EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
+                max_updates=5,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(5.4, 5.7),
-                lin_vel_y=(-0.15, 0.15),
-                ang_vel_z=(-0.15, 0.15),
+                lin_vel_y=(-1.6, 1.6),
+                ang_vel_z=(-1.6, 1.6),
                 speed_increment=0.0,
-                min_mean_reward=28.0,
+                min_mean_reward=25.0,
                 track_lin_vel_xy_exp_weight=3.0,
                 track_ang_vel_z_exp_weight=3.0,
                 energy_weight=-2.0e-4,
                 action_rate_l2_weight=-5.0e-3,
-                joint_deviation_arms_weight=-0.1,
+                joint_deviation_arms_weight=0.0,
             ),
             # Stage 13: 5.7~6.0 m/s.
             EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
+                max_updates=5,
                 termination_contact_delay_s=1.0,
                 lin_vel_x=(5.7, 6.0),
-                lin_vel_y=(-0.1, 0.1),
-                ang_vel_z=(-0.1, 0.1),
+                lin_vel_y=(-1.8, 1.8),
+                ang_vel_z=(-1.8, 1.8),
                 speed_increment=0.0,
-                min_mean_reward=28.0,
+                min_mean_reward=25.0,
                 track_lin_vel_xy_exp_weight=3.0,
                 track_ang_vel_z_exp_weight=3.0,
                 energy_weight=-2.0e-4,
                 action_rate_l2_weight=-5.0e-3,
-                joint_deviation_arms_weight=-0.1,
+                joint_deviation_arms_weight=0.0,
             ),
             # Stage 14: open variable speed with a hard cap at 6 m/s.
             # If rewards stall, slowly increase tracking weights to help convergence.
             EpisodeLengthCurriculumStageCfg(
                 max_updates=-1,
                 termination_contact_delay_s=1.0,
-                lin_vel_x=(-2.0, 6.0),
-                lin_vel_y=(-2.0, 2.0),
-                ang_vel_z=(-2.0, 2.0),
-                speed_increment=0.0,
-                max_forward_speed=6.0,
-                min_mean_reward=28.0,
+                lin_vel_x=(-2.0, 8.0),
+                lin_vel_y=(-3.0, 3.0),
+                ang_vel_z=(-3.0, 3.0),
+                speed_increment=0.2,
+                max_forward_speed=-1.0,
+                min_mean_reward=25.0,
                 track_lin_vel_xy_exp_weight=3.0,
                 track_lin_vel_xy_exp_weight_increment=0.05,
                 track_lin_vel_xy_exp_weight_max=3.0,
@@ -378,7 +378,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 track_ang_vel_z_exp_weight_max=3.0,
                 energy_weight=-2.0e-4,
                 action_rate_l2_weight=-5.0e-3,
-                joint_deviation_arms_weight=-0.1,
+                joint_deviation_arms_weight=0.0,
             ),
         ]
 
@@ -405,7 +405,7 @@ class G1RoughEnvCfg(G1FlatEnvCfg):
         self.reward.feet_air_time.weight = 0.25
         self.reward.track_lin_vel_xy_exp.weight = 1.5
         self.reward.track_ang_vel_z_exp.weight = 1.5
-        self.reward.lin_vel_z_l2.weight = -0.25
+        self.reward.lin_vel_z_l2.weight = 0.0
 
 
 @configclass
