@@ -6,3 +6,12 @@
 [2026-02-28 10:34 CST] User: 把最新的leggedLab的最优策略发给我。 Assistant: 选取 LeggedLab 最新checkpoint model_46100.pt 并通过 Telegram 发送文件给用户。
 [2026-02-28 10:36 CST] User: 把最新的leggedLab的最有策略发送送给我。 Assistant: 依据当前run指标选择最优checkpoint model_9500.pt，并通过 Telegram 成功发送（messageId 1439）。
 [2026-02-28 10:39 CST] User: 最新的策略也直接发给我。 Assistant: 已通过 Telegram 发送 LeggedLab 最新 checkpoint model_46100.pt（replyTo 1440, messageId 1441）。
+2026-02-28 14:45: 训练监控汇报。g1_flat 运行稳定，目前 model_12000.pt。
+
+## 2026-02-28 20:57:10 +0800
+- User: 给我对用的onnx（针对 model_46100.pt）
+- Assistant: 使用 LeggedLab play.py --export_only 从 run=2026-02-27_11-29-25 checkpoint=model_46100.pt 导出 ONNX；输出路径 exported/policy.onnx。
+
+## 2026-02-28 21:02:59 +0800
+- User: 发送给我（model_46100 对应 ONNX）
+- Assistant: 已发送 /home/hiyio/LeggedLab/logs/g1_flat/2026-02-27_11-29-25/exported/policy.onnx 至 Telegram。
