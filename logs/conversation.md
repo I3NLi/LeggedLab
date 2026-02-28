@@ -4,3 +4,4 @@
 [2026-02-28 02:00 CST] Cron: 双训练进度与评估报告生成（whole_body_tracking + LeggedLab）。
 [2026-02-28 09:15 CST] User: 给我最新的报告。 Assistant: 汇总 two-training 最新状态（PID/GPU、checkpoint、速度、标量指标）并给阶段判断。
 [2026-02-28 10:34 CST] User: 把最新的leggedLab的最优策略发给我。 Assistant: 选取 LeggedLab 最新checkpoint model_46100.pt 并通过 Telegram 发送文件给用户。
+[2026-02-28 10:36 CST] User: 把最新的leggedLab的最有策略发送送给我。 Assistant: 依据当前run指标选择最优checkpoint model_9500.pt，并通过 Telegram 成功发送（messageId 1439）。
