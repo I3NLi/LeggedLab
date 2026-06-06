@@ -14,7 +14,6 @@ import isaacsim.core.utils.torch as torch_utils  # type: ignore
 import inspect
 import numpy as np
 import torch
-from tensordict import TensorDict
 from isaaclab.assets.articulation import Articulation
 from isaaclab.envs.mdp.commands import UniformVelocityCommand, UniformVelocityCommandCfg
 from isaaclab.managers import EventManager, RewardManager
@@ -307,7 +306,7 @@ class BaseEnv(VecEnv):
         actor_obs, critic_obs = self.compute_observations()
         self.extras["observations"] = {"critic": critic_obs}
 
-        return self._obs_tensor_dict(actor_obs, critic_obs), reward_buf, self.reset_buf, self.extras
+        return actor_obs, reward_buf, self.reset_buf, self.extras
 
     def check_reset(self):
         net_contact_forces = self._tensor(self.contact_sensor.data.net_forces_w_history)
@@ -692,14 +691,7 @@ class BaseEnv(VecEnv):
     def get_observations(self):
         actor_obs, critic_obs = self.compute_observations()
         self.extras["observations"] = {"critic": critic_obs}
-        return self._obs_tensor_dict(actor_obs, critic_obs)
-
-    def _obs_tensor_dict(self, actor_obs, critic_obs):
-        return TensorDict(
-            {"actor": actor_obs, "critic": critic_obs},
-            batch_size=[self.num_envs],
-            device=self.device,
-        )
+        return actor_obs, self.extras
 
     @staticmethod
     def seed(seed: int = -1) -> int:
