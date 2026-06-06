@@ -146,11 +146,6 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
     env_cfg.robot.terminate_contacts_body_names = [".*torso.*", "pelvis"]
     env_cfg.robot.immediate_terminate_contacts_body_names = [".*shoulder.*", ".*head.*"]
     env_cfg.robot.terminate_contacts_delay_s = 0.0
-    env_cfg.robot.terminate_when_stuck = True
-    env_cfg.robot.stuck_command_threshold = 0.25
-    env_cfg.robot.stuck_speed_threshold = 0.08
-    env_cfg.robot.stuck_grace_s = 1.0
-    env_cfg.robot.stuck_duration_s = 0.6
     env_cfg.robot.terminate_when_speed_tracking_failed = True
     env_cfg.robot.speed_tracking_command_threshold = 0.5
     env_cfg.robot.speed_tracking_abs_error_threshold = 0.5
