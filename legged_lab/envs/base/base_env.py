@@ -27,6 +27,11 @@ from rsl_rl.env import VecEnv
 from legged_lab.envs.base.base_env_config import BaseEnvCfg
 from legged_lab.utils.env_utils.scene import SceneCfg
 
+try:
+    from tensordict import TensorDict
+except ImportError:
+    TensorDict = None
+
 
 class BaseEnv(VecEnv):
     def __init__(self, cfg: BaseEnvCfg, headless):
@@ -165,6 +170,7 @@ class BaseEnv(VecEnv):
         self._episode_len_curriculum_last_round_timeout_success = False
         self._episode_reward_curriculum_sum = 0.0
         self._episode_reward_curriculum_last_round_mean = 0.0
+        self._rsl_rl_uses_tensordict_obs = self._detect_rsl_rl_tensordict_observations()
         self.init_obs_buffer()
 
     def compute_current_observations(self):
@@ -306,6 +312,8 @@ class BaseEnv(VecEnv):
         actor_obs, critic_obs = self.compute_observations()
         self.extras["observations"] = {"critic": critic_obs}
 
+        if self._rsl_rl_uses_tensordict_obs:
+            return self._obs_tensor_dict(actor_obs, critic_obs), reward_buf, self.reset_buf, self.extras
         return actor_obs, reward_buf, self.reset_buf, self.extras
 
     def check_reset(self):
@@ -691,7 +699,26 @@ class BaseEnv(VecEnv):
     def get_observations(self):
         actor_obs, critic_obs = self.compute_observations()
         self.extras["observations"] = {"critic": critic_obs}
+        if self._rsl_rl_uses_tensordict_obs:
+            return self._obs_tensor_dict(actor_obs, critic_obs)
         return actor_obs, self.extras
+
+    def _obs_tensor_dict(self, actor_obs, critic_obs):
+        if TensorDict is None:
+            raise RuntimeError("This rsl_rl version requires TensorDict observations, but tensordict is not installed.")
+        return TensorDict(
+            {"actor": actor_obs, "critic": critic_obs},
+            batch_size=[self.num_envs],
+            device=self.device,
+        )
+
+    @staticmethod
+    def _detect_rsl_rl_tensordict_observations() -> bool:
+        try:
+            annotation = VecEnv.get_observations.__annotations__.get("return", "")
+        except AttributeError:
+            return False
+        return "TensorDict" in str(annotation)
 
     @staticmethod
     def seed(seed: int = -1) -> int:
