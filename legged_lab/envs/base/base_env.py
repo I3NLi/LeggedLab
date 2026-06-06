@@ -149,8 +149,6 @@ class BaseEnv(VecEnv):
         self._episode_had_teleport_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._teleported_this_step_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._termination_contact_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
-        self._stuck_command_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
-        self._stuck_command_reset_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._speed_tracking_failure_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self._speed_tracking_failure_reset_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._root_height_command = self._resolve_root_height_command()
@@ -290,8 +288,6 @@ class BaseEnv(VecEnv):
         self._episode_had_teleport_buf[env_ids] = False
         self._teleported_this_step_buf[env_ids] = False
         self._termination_contact_time_buf[env_ids] = 0.0
-        self._stuck_command_time_buf[env_ids] = 0.0
-        self._stuck_command_reset_buf[env_ids] = False
         self._speed_tracking_failure_time_buf[env_ids] = 0.0
         self._speed_tracking_failure_reset_buf[env_ids] = False
 
@@ -342,7 +338,6 @@ class BaseEnv(VecEnv):
     def check_reset(self):
         net_contact_forces = self._tensor(self.contact_sensor.data.net_forces_w_history)
         time_out_buf = self.episode_length_buf >= self.max_episode_length
-        self._stuck_command_reset_buf[:] = False
         self._speed_tracking_failure_reset_buf[:] = False
 
         immediate_termination_contact = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
@@ -363,7 +358,6 @@ class BaseEnv(VecEnv):
         if not self._termination_contact_enabled:
             reset_buf = (
                 immediate_termination_contact
-                | self._compute_stuck_command_reset()
                 | self._compute_speed_tracking_failure_reset()
                 | time_out_buf
             )
@@ -391,31 +385,9 @@ class BaseEnv(VecEnv):
             self._termination_contact_time_buf.mul_(contact_mask).add_(contact_mask * self.step_dt)
             reset_buf = self._termination_contact_time_buf >= self._termination_contact_delay_s
         reset_buf |= immediate_termination_contact
-        reset_buf |= self._compute_stuck_command_reset()
         reset_buf |= self._compute_speed_tracking_failure_reset()
         reset_buf |= time_out_buf
         return reset_buf, time_out_buf
-
-    def _compute_stuck_command_reset(self) -> torch.Tensor:
-        if not self.cfg.robot.terminate_when_stuck:
-            return self._stuck_command_reset_buf
-
-        command = self._command_tensor()
-        command_speed = torch.norm(command[:, :2], dim=1)
-        root_speed = torch.norm(self._tensor(self.robot.data.root_lin_vel_w)[:, :2], dim=1)
-        past_grace = self.episode_length_buf * self.step_dt >= max(0.0, float(self.cfg.robot.stuck_grace_s))
-        stuck = (
-            (command_speed > float(self.cfg.robot.stuck_command_threshold))
-            & (root_speed < float(self.cfg.robot.stuck_speed_threshold))
-            & past_grace
-            & ~self._teleported_this_step_buf
-        )
-        contact_mask = stuck.to(self._stuck_command_time_buf.dtype)
-        self._stuck_command_time_buf.mul_(contact_mask).add_(contact_mask * self.step_dt)
-        self._stuck_command_reset_buf[:] = self._stuck_command_time_buf >= max(
-            0.0, float(self.cfg.robot.stuck_duration_s)
-        )
-        return self._stuck_command_reset_buf
 
     def _compute_speed_tracking_failure_reset(self) -> torch.Tensor:
         if not self.cfg.robot.terminate_when_speed_tracking_failed:

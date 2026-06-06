@@ -63,7 +63,6 @@ class G1RewardCfg(RewardCfg):
     )
     flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-1.0)
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
-    stuck_command_penalty = RewTerm(func=mdp.stuck_command, weight=-80.0)
     # Gait shaping: encourage alternating single-stance timing.
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
