@@ -10,6 +10,7 @@
 # with modifications by Legged Lab Project (BSD-3-Clause license).
 
 import isaaclab.sim as sim_utils
+import isaaclab.utils.math as math_utils
 import isaacsim.core.utils.torch as torch_utils  # type: ignore
 import inspect
 import numpy as np
@@ -83,16 +84,9 @@ class BaseEnv(VecEnv):
             rel_heading_envs=self.cfg.commands.rel_heading_envs,
             heading_command=self.cfg.commands.heading_command,
             heading_control_stiffness=self.cfg.commands.heading_control_stiffness,
-            debug_vis=self.cfg.commands.debug_vis,
+            debug_vis=False,
             ranges=self.cfg.commands.ranges,
         )
-        if command_cfg.debug_vis:
-            for visualizer_cfg in (
-                command_cfg.goal_vel_visualizer_cfg,
-                command_cfg.current_vel_visualizer_cfg,
-            ):
-                for marker_cfg in visualizer_cfg.markers.values():
-                    marker_cfg.visual_material = None
         self.command_generator = UniformVelocityCommand(cfg=command_cfg, env=self)
         self.reward_manager = RewardManager(self.cfg.reward, self)
 
@@ -178,6 +172,12 @@ class BaseEnv(VecEnv):
         self._episode_reward_curriculum_sum = 0.0
         self._episode_reward_curriculum_last_round_mean = 0.0
         self._rsl_rl_uses_tensordict_obs = self._detect_rsl_rl_tensordict_observations()
+        self._velocity_debug_draw = None
+        self._velocity_debug_vis_enabled = bool(self.cfg.commands.debug_vis and not self.headless)
+        if self._velocity_debug_vis_enabled:
+            import isaacsim.util.debug_draw._debug_draw as omni_debug_draw
+
+            self._velocity_debug_draw = omni_debug_draw.acquire_debug_draw_interface()
         self.init_obs_buffer()
 
     def compute_current_observations(self):
@@ -302,6 +302,7 @@ class BaseEnv(VecEnv):
 
         self.episode_length_buf += 1
         self.command_generator.compute(self.step_dt)
+        self._draw_velocity_debug_arrows()
         if "interval" in self.event_manager.available_modes:
             self.event_manager.apply(mode="interval", dt=self.step_dt)
 
@@ -393,6 +394,51 @@ class BaseEnv(VecEnv):
             0.0, float(self.cfg.robot.stuck_duration_s)
         )
         return self._stuck_command_reset_buf
+
+    def _draw_velocity_debug_arrows(self):
+        if self._velocity_debug_draw is None:
+            return
+
+        self._velocity_debug_draw.clear_lines()
+        root_pos = self._tensor(self.robot.data.root_pos_w).clone()
+        root_pos[:, 2] += 0.7
+        command = self._command_tensor()
+        command_3d = torch.cat([command[:, :2], torch.zeros_like(command[:, :1])], dim=1)
+        command_w = math_utils.quat_apply_yaw(self._tensor(self.robot.data.root_quat_w), command_3d)
+        actual_w = self._tensor(self.robot.data.root_lin_vel_w)
+
+        starts = []
+        ends = []
+        colors = []
+        thicknesses = []
+        for velocity, color in (
+            (command_w, (0.0, 1.0, 0.0, 1.0)),
+            (actual_w, (0.0, 0.35, 1.0, 1.0)),
+        ):
+            arrow_vec = velocity[:, :3].clone()
+            arrow_vec[:, 2] = 0.0
+            arrow_len = torch.norm(arrow_vec[:, :2], dim=1, keepdim=True).clamp(min=1.0e-6)
+            direction = arrow_vec / arrow_len
+            scale = torch.clamp(arrow_len, max=2.5) * 0.35
+            end = root_pos + direction * scale
+
+            starts.extend(root_pos.tolist())
+            ends.extend(end.tolist())
+            colors.extend([color] * self.num_envs)
+            thicknesses.extend([4.0] * self.num_envs)
+
+            side = torch.stack([-direction[:, 1], direction[:, 0], torch.zeros_like(direction[:, 0])], dim=1)
+            head_base = end - direction * 0.18
+            left = head_base + side * 0.08
+            right = head_base - side * 0.08
+            starts.extend(end.tolist())
+            ends.extend(left.tolist())
+            starts.extend(end.tolist())
+            ends.extend(right.tolist())
+            colors.extend([color] * (2 * self.num_envs))
+            thicknesses.extend([4.0] * (2 * self.num_envs))
+
+        self._velocity_debug_draw.draw_lines(starts, ends, colors, thicknesses)
 
     def _teleport_out_of_bounds_envs(self) -> int:
         terrain_generator = self.cfg.scene.terrain_generator
