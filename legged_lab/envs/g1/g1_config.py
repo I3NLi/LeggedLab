@@ -238,7 +238,6 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 action_rate_l2_weight=-3.0e-3,
                 joint_deviation_arms_weight=-0.06,
                 joint_deviation_hip_weight=-0.05,
-                joint_deviation_legs_weight=-0.01,
             ),
         ]
 
