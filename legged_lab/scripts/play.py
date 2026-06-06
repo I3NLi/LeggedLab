@@ -105,9 +105,10 @@ def play():
     policy = runner.get_inference_policy(device=env.device)
 
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-    export_policy_as_jit(runner.alg.policy, runner.obs_normalizer, path=export_model_dir, filename="policy.pt")
+    obs_normalizer = getattr(runner, "obs_normalizer", None)
+    export_policy_as_jit(runner.alg.policy, obs_normalizer, path=export_model_dir, filename="policy.pt")
     export_policy_as_onnx(
-        runner.alg.policy, normalizer=runner.obs_normalizer, path=export_model_dir, filename="policy.onnx"
+        runner.alg.policy, normalizer=obs_normalizer, path=export_model_dir, filename="policy.onnx"
     )
     if args_cli.export_only:
         print(f"[INFO] Exported policy artifacts to: {export_model_dir}")
