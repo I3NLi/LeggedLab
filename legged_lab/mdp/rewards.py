@@ -44,6 +44,13 @@ def track_ang_vel_z_world_exp(
     return torch.exp(-ang_vel_error / std**2)
 
 
+def track_root_height_exp(env: BaseEnv, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    target_height_w = env.scene.env_origins[:, 2] + env._command_tensor()[:, 3]
+    root_height_error = torch.square(target_height_w - env._tensor(asset.data.root_pos_w)[:, 2])
+    return torch.exp(-root_height_error / std**2)
+
+
 def lin_vel_z_l2(env: BaseEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     return torch.square(env._tensor(asset.data.root_lin_vel_b)[:, 2])

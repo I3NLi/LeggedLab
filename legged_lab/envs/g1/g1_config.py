@@ -35,6 +35,7 @@ class G1RewardCfg(RewardCfg):
     # Command tracking rewards (drive toward commanded linear/angular velocity).
     track_lin_vel_xy_exp = RewTerm(func=mdp.track_lin_vel_xy_yaw_frame_exp, weight=1.0, params={"std": 0.5})
     track_ang_vel_z_exp = RewTerm(func=mdp.track_ang_vel_z_world_exp, weight=1.0, params={"std": 0.5})
+    track_root_height_exp = RewTerm(func=mdp.track_root_height_exp, weight=0.5, params={"std": 0.08})
     # Stability and smoothness penalties.
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-1.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)

@@ -151,6 +151,9 @@ class BaseEnv(VecEnv):
         self._termination_contact_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self._stuck_command_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self._stuck_command_reset_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._root_height_command_buf = torch.full(
+            (self.num_envs, 1), float(self.cfg.commands.root_height), device=self.device
+        )
         self._termination_contact_delay_s = max(0.0, float(self.cfg.robot.terminate_contacts_delay_s))
         self._termination_contact_enabled = True
         self._static_log_info = {
@@ -212,7 +215,7 @@ class BaseEnv(VecEnv):
         return current_actor_obs, current_critic_obs
 
     def _command_tensor(self):
-        return self._tensor(self.command_generator.command)
+        return torch.cat([self._tensor(self.command_generator.command), self._root_height_command_buf], dim=-1)
 
     def _tensor(self, value):
         return torch.as_tensor(value, dtype=torch.float32, device=self.device)

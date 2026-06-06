@@ -155,6 +155,7 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
     env_cfg.robot.stuck_grace_s = 1.0
     env_cfg.robot.stuck_duration_s = 0.6
     env_cfg.robot.feet_body_names = [".*ankle_roll.*"]
+    env_cfg.commands.root_height = 0.69
 
     env_cfg.domain_rand.events.add_base_mass.params["asset_cfg"].body_names = ["torso_link"]
     env_cfg.domain_rand.events.reset_base.params["velocity_range"] = {
@@ -197,6 +198,8 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
         "contact_sensor", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]
     )
     env_cfg.reward.body_orientation_l2.params["asset_cfg"] = SceneEntityCfg("robot", body_names=["torso_link"])
+    env_cfg.reward.track_root_height_exp.weight = 0.8
+    env_cfg.reward.track_root_height_exp.params["std"] = 0.06
 
 
 @configclass
