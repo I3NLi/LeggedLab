@@ -47,6 +47,11 @@ class G1RewardCfg(RewardCfg):
         weight=-1.0,
         params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names="(?!.*ankle.*).*"), "threshold": 1.0},
     )
+    shoulder_head_contacts = RewTerm(
+        func=mdp.undesired_contacts,
+        weight=-50.0,
+        params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=[".*shoulder.*", ".*head.*"]), "threshold": 1.0},
+    )
     fly = RewTerm(
         func=mdp.fly,
         weight=-1.0,
@@ -130,7 +135,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
         self.scene.terrain_type = "plane"
         self.scene.terrain_generator = None
         # Termination and feet contact configuration.
-        self.robot.terminate_contacts_body_names = [".*torso.*"]
+        self.robot.terminate_contacts_body_names = [".*torso.*", ".*shoulder.*", ".*head.*"]
         self.robot.terminate_contacts_delay_s = 1.0
         self.robot.feet_body_names = [".*ankle_roll.*"]
         # Domain randomization target (mass noise on torso).

@@ -12,7 +12,7 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
     env_cfg.scene.robot = MAGICBOT_Z1_CFG
     env_cfg.scene.height_scanner.prim_body_name = "torso_link"
 
-    env_cfg.robot.terminate_contacts_body_names = [".*torso.*", "pelvis"]
+    env_cfg.robot.terminate_contacts_body_names = [".*torso.*", "pelvis", ".*shoulder.*", ".*head.*"]
     env_cfg.robot.terminate_contacts_delay_s = 0.0
     env_cfg.robot.feet_body_names = [".*ankle_roll.*"]
 
