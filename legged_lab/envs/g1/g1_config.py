@@ -153,7 +153,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 max_updates=1,
                 round_episode_count=1024,
                 episode_length_ratio=0.65,
-                min_mean_reward=-40.0,
+                min_mean_reward=-20.0,
                 lin_vel_x=(-0.5, 1.0),
                 lin_vel_y=(-0.25, 0.25),
                 ang_vel_z=(-0.3, 0.3),
