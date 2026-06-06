@@ -94,7 +94,7 @@ class BaseEnvCfg:
         rel_heading_envs=1.0,
         heading_command=True,
         heading_control_stiffness=0.5,
-        debug_vis=True,
+        debug_vis=False,
         ranges=CommandRangesCfg(
             lin_vel_x=(-0.6, 1.0), lin_vel_y=(-0.5, 0.5), ang_vel_z=(-1.57, 1.57), heading=(-math.pi, math.pi)
         ),
@@ -174,6 +174,7 @@ class BaseEnvCfg:
 class BaseAgentCfg(RslRlOnPolicyRunnerCfg):
     seed = 42
     device = "cuda:0"
+    obs_groups = {"policy": ["actor"], "critic": ["critic"]}
     num_steps_per_env = 24
     max_iterations = 50000
     empirical_normalization = False

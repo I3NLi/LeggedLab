@@ -62,6 +62,9 @@ def train():
         env_cfg.scene.num_envs = args_cli.num_envs
 
     agent_cfg = update_rsl_rl_cfg(agent_cfg, args_cli)
+    if args_cli.device is not None:
+        env_cfg.device = args_cli.device
+        agent_cfg.device = args_cli.device
     env_cfg.scene.seed = agent_cfg.seed
 
     if args_cli.distributed:

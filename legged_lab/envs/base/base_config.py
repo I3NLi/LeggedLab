@@ -97,7 +97,7 @@ class CommandsCfg:
     rel_heading_envs: float = 1.0
     heading_command: bool = True
     heading_control_stiffness: float = 0.5
-    debug_vis: bool = True
+    debug_vis: bool = False
     ranges: CommandRangesCfg = CommandRangesCfg()
 
 
@@ -129,6 +129,8 @@ class EpisodeLengthCurriculumStageCfg:
     # Optional termination override for fall-recovery stages.
     termination_contact_enabled: bool | None = None
     termination_contact_delay_s: float | None = None
+    # Optional reset randomization override for joint pose scaling.
+    reset_joint_pos_range: tuple[float, float] | None = None
     speed_increment: float | None = None
     min_mean_reward: float | None = None
     episode_length_ratio: float | None = None
@@ -139,9 +141,12 @@ class EpisodeLengthCurriculumStageCfg:
     track_lin_vel_xy_exp_weight: float | None = None
     track_ang_vel_z_exp_weight: float | None = None
     # Optional reward weight overrides for regularization terms.
+    feet_air_time_weight: float | None = None
     energy_weight: float | None = None
     action_rate_l2_weight: float | None = None
+    joint_deviation_hip_weight: float | None = None
     joint_deviation_arms_weight: float | None = None
+    joint_deviation_legs_weight: float | None = None
     # Optional reward weight schedule for infinite stages.
     track_lin_vel_xy_exp_weight_increment: float | None = None
     track_lin_vel_xy_exp_weight_max: float | None = None
