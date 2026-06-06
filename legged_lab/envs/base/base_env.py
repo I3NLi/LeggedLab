@@ -125,6 +125,12 @@ class BaseEnv(VecEnv):
             name="contact_sensor", body_names=self.cfg.robot.terminate_contacts_body_names
         )
         self.termination_contact_cfg.resolve(self.scene)
+        self.immediate_termination_contact_cfg = None
+        if self.cfg.robot.immediate_terminate_contacts_body_names:
+            self.immediate_termination_contact_cfg = SceneEntityCfg(
+                name="contact_sensor", body_names=self.cfg.robot.immediate_terminate_contacts_body_names
+            )
+            self.immediate_termination_contact_cfg.resolve(self.scene)
         self.feet_cfg = SceneEntityCfg(name="contact_sensor", body_names=self.cfg.robot.feet_body_names)
         self.feet_cfg.resolve(self.scene)
 
@@ -303,11 +309,25 @@ class BaseEnv(VecEnv):
         net_contact_forces = self._tensor(self.contact_sensor.data.net_forces_w_history)
         time_out_buf = self.episode_length_buf >= self.max_episode_length
 
+        immediate_termination_contact = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        if self.immediate_termination_contact_cfg is not None:
+            immediate_termination_contact = torch.any(
+                torch.max(
+                    torch.norm(
+                        net_contact_forces[:, :, self.immediate_termination_contact_cfg.body_ids],
+                        dim=-1,
+                    ),
+                    dim=1,
+                )[0]
+                > 1.0,
+                dim=1,
+            )
+
         if not self._termination_contact_enabled:
-            reset_buf = time_out_buf
+            reset_buf = immediate_termination_contact | time_out_buf
             return reset_buf, time_out_buf
 
-        termination_contact = torch.any(
+        delayed_termination_contact = torch.any(
             torch.max(
                 torch.norm(
                     net_contact_forces[:, :, self.termination_contact_cfg.body_ids],
@@ -320,14 +340,16 @@ class BaseEnv(VecEnv):
         )
         # Ignore contact-based termination only in the step where teleport happened.
         # This prevents teleport itself from causing an immediate reset, while future falls still terminate early.
-        termination_contact &= ~self._teleported_this_step_buf
+        delayed_termination_contact &= ~self._teleported_this_step_buf
+        immediate_termination_contact &= ~self._teleported_this_step_buf
         if self._termination_contact_delay_s <= 0.0:
-            reset_buf = termination_contact
+            reset_buf = delayed_termination_contact
         else:
             # Accumulate continuous fall duration; reset when contact clears.
-            contact_mask = termination_contact.to(self._termination_contact_time_buf.dtype)
+            contact_mask = delayed_termination_contact.to(self._termination_contact_time_buf.dtype)
             self._termination_contact_time_buf.mul_(contact_mask).add_(contact_mask * self.step_dt)
             reset_buf = self._termination_contact_time_buf >= self._termination_contact_delay_s
+        reset_buf |= immediate_termination_contact
         reset_buf |= time_out_buf
         return reset_buf, time_out_buf
 

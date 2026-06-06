@@ -12,18 +12,18 @@ from legged_lab.envs.g1.g1_config import G1FlatAgentCfg, G1FlatEnvCfg, G1RoughAg
 def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
     env_cfg.episode_length_curriculum.enable = True
     env_cfg.episode_length_curriculum.round_episode_count = 2048
-    env_cfg.episode_length_curriculum.episode_length_ratio = 0.65
+    env_cfg.episode_length_curriculum.episode_length_ratio = 0.95
     env_cfg.episode_length_curriculum.required_streak_rounds = 1
     env_cfg.episode_length_curriculum.min_mean_reward = -40.0
     env_cfg.episode_length_curriculum.max_forward_speed = -1.0
     env_cfg.episode_length_curriculum.print_status = True
     env_cfg.episode_length_curriculum.stages = [
-        # Fall-recovery bootcamp: keep episodes alive after upper-body contact so
+        # Fall-recovery bootcamp: keep episodes alive after body contact so
         # the policy can learn to stand back up instead of only learning to reset.
         EpisodeLengthCurriculumStageCfg(
             max_updates=1,
             round_episode_count=1024,
-            episode_length_ratio=0.35,
+            episode_length_ratio=0.95,
             min_mean_reward=-120.0,
             termination_contact_enabled=False,
             reset_joint_pos_range=(0.20, 1.80),
@@ -40,7 +40,7 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
         EpisodeLengthCurriculumStageCfg(
             max_updates=1,
             round_episode_count=1536,
-            episode_length_ratio=0.60,
+            episode_length_ratio=0.95,
             min_mean_reward=-60.0,
             termination_contact_enabled=True,
             termination_contact_delay_s=0.0,
@@ -55,9 +55,10 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
         EpisodeLengthCurriculumStageCfg(
             max_updates=1,
             round_episode_count=2048,
-            episode_length_ratio=0.45,
+            episode_length_ratio=0.95,
             min_mean_reward=-100.0,
-            termination_contact_enabled=False,
+            termination_contact_enabled=True,
+            termination_contact_delay_s=1.0,
             reset_joint_pos_range=(0.15, 1.90),
             lin_vel_x=(-0.8, 2.0),
             lin_vel_y=(-0.35, 0.35),
@@ -71,10 +72,10 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
         EpisodeLengthCurriculumStageCfg(
             max_updates=1,
             round_episode_count=2048,
-            episode_length_ratio=0.65,
+            episode_length_ratio=0.95,
             min_mean_reward=-30.0,
             termination_contact_enabled=True,
-            termination_contact_delay_s=0.0,
+            termination_contact_delay_s=1.0,
             reset_joint_pos_range=(0.45, 1.55),
             lin_vel_x=(-1.0, 3.0),
             lin_vel_y=(-0.25, 0.25),
@@ -88,9 +89,10 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
         EpisodeLengthCurriculumStageCfg(
             max_updates=1,
             round_episode_count=3072,
-            episode_length_ratio=0.50,
+            episode_length_ratio=0.95,
             min_mean_reward=-80.0,
-            termination_contact_enabled=False,
+            termination_contact_enabled=True,
+            termination_contact_delay_s=1.0,
             reset_joint_pos_range=(0.25, 1.75),
             lin_vel_x=(-1.0, 4.0),
             lin_vel_y=(-0.25, 0.25),
@@ -104,10 +106,10 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
         EpisodeLengthCurriculumStageCfg(
             max_updates=2,
             round_episode_count=4096,
-            episode_length_ratio=0.70,
+            episode_length_ratio=0.95,
             min_mean_reward=-20.0,
             termination_contact_enabled=True,
-            termination_contact_delay_s=0.0,
+            termination_contact_delay_s=1.0,
             reset_joint_pos_range=(0.50, 1.50),
             lin_vel_x=(-1.0, 5.5),
             lin_vel_y=(-0.20, 0.20),
@@ -121,10 +123,10 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
         EpisodeLengthCurriculumStageCfg(
             max_updates=-1,
             round_episode_count=4096,
-            episode_length_ratio=0.70,
+            episode_length_ratio=0.95,
             min_mean_reward=-20.0,
             termination_contact_enabled=True,
-            termination_contact_delay_s=0.0,
+            termination_contact_delay_s=1.0,
             reset_joint_pos_range=(0.60, 1.40),
             lin_vel_x=(-1.0, 8.0),
             lin_vel_y=(-0.20, 0.20),
@@ -144,7 +146,8 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
     env_cfg.scene.robot = MAGICBOT_Z1_CFG
     env_cfg.scene.height_scanner.prim_body_name = "torso_link"
 
-    env_cfg.robot.terminate_contacts_body_names = [".*torso.*", "pelvis", ".*shoulder.*", ".*head.*"]
+    env_cfg.robot.terminate_contacts_body_names = [".*torso.*", "pelvis"]
+    env_cfg.robot.immediate_terminate_contacts_body_names = [".*shoulder.*", ".*head.*"]
     env_cfg.robot.terminate_contacts_delay_s = 0.0
     env_cfg.robot.feet_body_names = [".*ankle_roll.*"]
 

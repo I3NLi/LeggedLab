@@ -135,7 +135,8 @@ class G1FlatEnvCfg(BaseEnvCfg):
         self.scene.terrain_type = "plane"
         self.scene.terrain_generator = None
         # Termination and feet contact configuration.
-        self.robot.terminate_contacts_body_names = [".*torso.*", ".*shoulder.*", ".*head.*"]
+        self.robot.terminate_contacts_body_names = [".*torso.*"]
+        self.robot.immediate_terminate_contacts_body_names = [".*shoulder.*", ".*head.*"]
         self.robot.terminate_contacts_delay_s = 1.0
         self.robot.feet_body_names = [".*ankle_roll.*"]
         # Domain randomization target (mass noise on torso).
@@ -147,7 +148,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
         # pushing forward velocity as aggressively as stability allows.
         self.episode_length_curriculum.enable = True
         self.episode_length_curriculum.round_episode_count = 2048
-        self.episode_length_curriculum.episode_length_ratio = 0.80
+        self.episode_length_curriculum.episode_length_ratio = 0.95
         self.episode_length_curriculum.required_streak_rounds = 1
         self.episode_length_curriculum.min_mean_reward = 0.0
         self.episode_length_curriculum.max_forward_speed = -1.0
@@ -157,7 +158,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
             EpisodeLengthCurriculumStageCfg(
                 max_updates=1,
                 round_episode_count=1024,
-                episode_length_ratio=0.65,
+                episode_length_ratio=0.95,
                 min_mean_reward=-20.0,
                 lin_vel_x=(-0.5, 1.0),
                 lin_vel_y=(-0.25, 0.25),
@@ -178,7 +179,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
             EpisodeLengthCurriculumStageCfg(
                 max_updates=1,
                 round_episode_count=2048,
-                episode_length_ratio=0.75,
+                episode_length_ratio=0.95,
                 min_mean_reward=-10.0,
                 reset_joint_pos_range=(0.45, 1.55),
                 lin_vel_x=(-0.8, 3.2),
@@ -192,7 +193,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
             EpisodeLengthCurriculumStageCfg(
                 max_updates=2,
                 round_episode_count=3072,
-                episode_length_ratio=0.80,
+                episode_length_ratio=0.95,
                 min_mean_reward=0.0,
                 reset_joint_pos_range=(0.5, 1.5),
                 lin_vel_x=(-1.0, 4.8),
@@ -207,7 +208,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
             EpisodeLengthCurriculumStageCfg(
                 max_updates=2,
                 round_episode_count=4096,
-                episode_length_ratio=0.82,
+                episode_length_ratio=0.95,
                 min_mean_reward=5.0,
                 reset_joint_pos_range=(0.6, 1.4),
                 lin_vel_x=(-1.0, 6.5),
@@ -223,7 +224,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
             EpisodeLengthCurriculumStageCfg(
                 max_updates=-1,
                 round_episode_count=4096,
-                episode_length_ratio=0.80,
+                episode_length_ratio=0.95,
                 min_mean_reward=0.0,
                 reset_joint_pos_range=(0.6, 1.4),
                 lin_vel_x=(-1.0, 8.0),
