@@ -34,7 +34,6 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
             track_ang_vel_z_exp_weight=0.8,
             energy_weight=-8.0e-4,
             action_rate_l2_weight=-8.0e-3,
-            joint_deviation_arms_weight=-0.20,
         ),
         # Immediate-termination walking gate.
         EpisodeLengthCurriculumStageCfg(
@@ -67,7 +66,6 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
             track_ang_vel_z_exp_weight=1.2,
             energy_weight=-6.0e-4,
             action_rate_l2_weight=-6.0e-3,
-            joint_deviation_arms_weight=-0.15,
         ),
         EpisodeLengthCurriculumStageCfg(
             max_updates=1,
@@ -101,7 +99,6 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
             track_ang_vel_z_exp_weight=1.8,
             energy_weight=-4.0e-4,
             action_rate_l2_weight=-4.5e-3,
-            joint_deviation_arms_weight=-0.12,
         ),
         EpisodeLengthCurriculumStageCfg(
             max_updates=2,
@@ -118,7 +115,6 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
             track_ang_vel_z_exp_weight=2.2,
             energy_weight=-2.5e-4,
             action_rate_l2_weight=-4.0e-3,
-            joint_deviation_arms_weight=-0.10,
         ),
         EpisodeLengthCurriculumStageCfg(
             max_updates=-1,

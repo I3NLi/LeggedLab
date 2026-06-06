@@ -210,7 +210,6 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 track_ang_vel_z_exp_weight=2.0,
                 energy_weight=-3.0e-4,
                 action_rate_l2_weight=-5.0e-3,
-                joint_deviation_arms_weight=-0.12,
             ),
             EpisodeLengthCurriculumStageCfg(
                 max_updates=2,
@@ -225,8 +224,6 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 track_ang_vel_z_exp_weight=2.5,
                 energy_weight=-2.0e-4,
                 action_rate_l2_weight=-4.0e-3,
-                joint_deviation_arms_weight=-0.08,
-                joint_deviation_hip_weight=-0.08,
             ),
             EpisodeLengthCurriculumStageCfg(
                 max_updates=-1,
