@@ -86,6 +86,13 @@ class BaseEnv(VecEnv):
             debug_vis=self.cfg.commands.debug_vis,
             ranges=self.cfg.commands.ranges,
         )
+        if command_cfg.debug_vis:
+            for visualizer_cfg in (
+                command_cfg.goal_vel_visualizer_cfg,
+                command_cfg.current_vel_visualizer_cfg,
+            ):
+                for marker_cfg in visualizer_cfg.markers.values():
+                    marker_cfg.visual_material = None
         self.command_generator = UniformVelocityCommand(cfg=command_cfg, env=self)
         self.reward_manager = RewardManager(self.cfg.reward, self)
 
