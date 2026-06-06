@@ -13,7 +13,22 @@ pip install -e .
 ```
 
 **本地训练**
-常用命令（G1 平地）：
+当前推荐环境为 `env_isaacsim51`，对应 Isaac Sim 5.1 / IsaacLab 3.3。运行前保持 `PYTHONPATH` 指向本仓库，避免其它 Python 包路径污染：
+
+```bash
+OMNI_KIT_ACCEPT_EULA=YES \
+PYTHONNOUSERSITE=1 \
+PYTHONPATH=/home/hiyio/LeggedLab \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task=g1_flat \
+  --logger=tensorboard \
+  --num_envs=64 \
+  --device=cuda:0 \
+  --kit_args=--portable
+```
+
+常规 headless 训练命令（G1 平地）：
 
 ```bash
 python legged_lab/scripts/train.py \
@@ -59,3 +74,38 @@ tensorboard --logdir /home/hiyio/LeggedLab/logs
 - `--num_envs=4096` 是常见平衡点。
 - `--headless` 训练更快更稳。
 - `--logger=tensorboard` 便于本地查看曲线。
+
+**提交纪律**
+后续所有修改都按“小步可回退”原则提交：
+
+- 每完成一个可验证修改就提交一次，不把多条实验路线混在同一个 commit。
+- 提交前至少运行轻量检查：`python -m py_compile` 覆盖改动过的 Python 文件，必要时跑一次小规模 `--num_envs=64` smoke test。
+- 运行日志、临时对话记录、缓存文件不混入功能提交，除非这次提交的目标就是更新文档或实验记录。
+- commit message 用动词开头，说明对象和目的，例如 `Align G1 training with Isaac Sim 5.1`。
+- 长训练进程不用为了提交而中断；提交代码状态，日志目录在文档或 commit 说明里记录。
+
+**分支策略**
+主线建议保留为可运行整合线，具体实验走 `feat/*` 或 `fix/*`：
+
+- `magicbot-z1-support`：当前整合分支，承载 Z1/G1 共同可运行链路。
+- `feat/z1-deploy-native-sdk`：基于 `engineai_robotics_native_sdk` 的 Z1 部署代码。
+- `feat/z1-assets-leggedlab`：Z1 asset、关节映射、actuator、contact body 与 LeggedLab 适配。
+- `feat/z1-whole-body-tracking`：Z1 在 `whole_body_tracking` 侧的 motion/retarget/tracking 训练链路。
+- `feat/g1-flat-plane-curriculum`：G1 真平面走路/跑步课程与 reward 调参。
+- `feat/g1-gravel-terrain`：G1 小地形、gravel/generator 训练。
+- `feat/isaacsim51-compat`：Isaac Sim 5.1 / IsaacLab 3.3 / rsl_rl API 兼容层。
+- `fix/physx-resume-restoffset-*`：PhysX 或 resume 的窄修复，只放最小补丁。
+
+推荐从整合线开新实验分支：
+
+```bash
+git switch magicbot-z1-support
+git switch -c feat/z1-deploy-native-sdk
+```
+
+实验稳定后再合回整合线：
+
+```bash
+git switch magicbot-z1-support
+git merge --no-ff feat/z1-deploy-native-sdk
+```

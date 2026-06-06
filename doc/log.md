@@ -111,3 +111,123 @@ TensorBoard 观察：
 # 2026-02-13_09-02-16
 - 课程更新：针对 >4.5 m/s 不迈步问题，细化 4.5~6.0 区间为更窄速度段并延长停留；收紧高速侧向/转向范围。
 - 3 m/s 以上放松胳膊与能量惩罚：新增 stage 覆盖 joint_deviation_arms 权重，并进一步减小 energy 惩罚。
+
+# 2026-02-26_g1_flat_6m_手臂乱飞调试
+- 参考日志目录：`/home/hiyio/LeggedLab/logs/g1_flat/2026-02-25_22-42-48`
+- 现象：
+  - 课程可推进到高速阶段，策略能够跑到约 6 m/s（并进入更高速度开放区间）。
+  - 但出现明显“手乱飞/上肢摆动过大”。
+- 观测结论：
+  - 当时训练中 `Episode_Reward/joint_deviation_arms` 约束不足（接近无约束），高速阶段更容易用手臂补偿姿态与速度误差。
+- 本次调整：
+  - 在课程与奖励配置中加入/恢复手部控制约束，重点对 `joint_deviation_arms` 进行限制后重新开跑验证。
+  - 当前采用默认约束强度：`joint_deviation_arms.weight = -0.2`（与仓库默认对齐）。
+- 下一步验证指标：
+  - `Episode_Reward/joint_deviation_arms` 是否从“接近 0 约束”转为可观测惩罚。
+  - 高速段 `Train/mean_reward`、`Train/mean_episode_length` 是否保持稳定。
+  - `Env/out_of_bounds_teleports` 是否下降。
+
+# 2026-02-26_g1_flat_新一轮测试开始（按当前 g1_config）
+- 配置来源：`/home/hiyio/LeggedLab/legged_lab/envs/g1/g1_config.py`
+- 本轮核心配置：
+  - `joint_deviation_arms.weight = -0.2`（恢复手部约束默认强度）。
+  - 课程启用，`round_episode_count = 6000`。
+  - 分阶段课程 `max_updates=1`（每完成一轮统计即推进下一 stage），最终阶段 `max_updates=-1`。
+  - 课程中加入髋关节约束调度：`joint_deviation_hip_weight` 从 `-0.2` 逐步放松到 `-0.02`。
+  - 高速阶段跟踪权重提升，最终阶段 `track_lin_vel_xy_exp_weight=4.0`、`track_ang_vel_z_exp_weight=4.0`。
+- 测试目标：
+  - 保持 6 m/s 附近速度能力。
+  - 抑制“手乱飞”现象，减少上肢不必要摆动。
+- 本轮重点观测指标：
+  - `Episode_Reward/joint_deviation_arms`
+  - `Train/mean_reward`、`Train/mean_episode_length`
+  - `Curriculum/stage_index`、`Curriculum/forward_speed_max`
+  - `Env/out_of_bounds_teleports`
+- 启动命令（记录）：
+  - `python legged_lab/scripts/train.py --task=g1_flat --num_envs=4096 --headless --logger=tensorboard`
+
+# 2026-02-26_g1_flat_最终日志分析（2026-02-26_21-30-20）
+- 日志目录：`/home/hiyio/LeggedLab/logs/g1_flat/2026-02-26_21-30-20`
+- 备注：`2026-02-26_23-06-00` 仅有 3 个数据点（step 0~2），属于短启动记录，不作为主分析对象。
+
+- 收敛情况：
+  - `Train/mean_reward`：最终约 `46.26`（峰值约 `50.02`）。
+  - `Train/mean_episode_length`：最终约 `993.14`，已接近满时长 `1000`。
+  - 当前训练总体稳定，未出现明显发散。
+
+- 课程推进：
+  - `Curriculum/round_index = 80`
+  - `Curriculum/stage_index = 16`（最终无限阶段）
+  - `Curriculum/stage_progress = 55`
+  - `Curriculum/forward_speed_max = 8.0`
+  - 解释：当前 `max_updates` 配置在前置阶段的累计门槛约为 25 轮，因此 round 到 80 时已在最终阶段持续训练。
+
+- 手部控制相关指标：
+  - `Episode_Reward/joint_deviation_arms` 最终约 `-0.049`（全程最小约 `-0.254`）。
+  - `Episode_Reward/joint_deviation_hip` 最终约 `-0.232`。
+  - 说明：手臂偏离惩罚已经生效，不再是接近 0 的无约束状态。
+
+- 风险与后续：
+  - 本轮课程推进依然较快（约 step 1210 即进入 stage 16），后续若希望在中高速阶段训练更久，建议提高中段 `max_updates` 或进一步增大 `round_episode_count`。
+
+# 2026-06-06_env_isaacsim51_对齐与提交策略
+- 当前整合分支：`magicbot-z1-support`。
+- 已提交代码快照：`0bcafb8 Align G1 training with Isaac Sim 5.1`。
+- 目标：让 LeggedLab 的 `g1_flat` 对齐正在运行的 `env_isaacsim51`，并保持后续修改可快速回退。
+
+环境链路：
+- Python：`/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python`
+- Isaac Sim：5.1
+- IsaacLab：3.3
+- rsl_rl：新版 TensorDict observation API
+- 推荐运行时环境变量：
+  - `OMNI_KIT_ACCEPT_EULA=YES`
+  - `PYTHONNOUSERSITE=1`
+  - `PYTHONPATH=/home/hiyio/LeggedLab`
+  - `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`
+
+验证命令：
+```bash
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python -m py_compile \
+  legged_lab/mdp/rewards.py \
+  legged_lab/envs/base/base_env.py \
+  legged_lab/envs/base/base_env_config.py \
+  legged_lab/envs/g1/g1_config.py \
+  legged_lab/scripts/train.py
+
+git diff --cached --check
+```
+
+已跑通的 smoke train：
+```bash
+OMNI_KIT_ACCEPT_EULA=YES \
+PYTHONNOUSERSITE=1 \
+PYTHONPATH=/home/hiyio/LeggedLab \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task=g1_flat \
+  --logger=tensorboard \
+  --num_envs=64 \
+  --device=cuda:0 \
+  --kit_args=--portable
+```
+
+运行结果：
+- 非 headless GUI 正常启动。
+- GPU PhysX 未复现 Isaac Sim 4.5 下的 kernel error。
+- 已进入 learning iteration，确认至少运行到 iteration 25。
+- 训练进程记录：`PID 2473639`。
+- 日志目录：`/home/hiyio/LeggedLab/logs/g1_flat/2026-06-06_10-49-41`。
+
+后续提交纪律：
+- 每完成一个可验证修改就提交一次，避免大杂烩 commit。
+- 功能探索走 `feat/*` 分支，窄修复走 `fix/*` 分支。
+- 运行记录和对话日志默认不混入功能提交；文档更新单独提交。
+
+建议分支：
+- `feat/z1-deploy-native-sdk`：Z1 native SDK 部署代码。
+- `feat/z1-assets-leggedlab`：Z1 asset 与 LeggedLab 适配。
+- `feat/z1-whole-body-tracking`：Z1 whole_body_tracking 链路。
+- `feat/g1-flat-plane-curriculum`：G1 真平面走路/跑步课程。
+- `feat/g1-gravel-terrain`：G1 gravel/generator 小地形训练。
+- `feat/isaacsim51-compat`：Isaac Sim 5.1 兼容层。
