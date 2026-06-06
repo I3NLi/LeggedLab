@@ -151,6 +151,8 @@ class BaseEnv(VecEnv):
         self._termination_contact_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self._stuck_command_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self._stuck_command_reset_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._speed_tracking_failure_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
+        self._speed_tracking_failure_reset_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._root_height_command = self._resolve_root_height_command()
         self._root_height_command_buf = torch.full(
             (self.num_envs, 1), self._root_height_command, device=self.device
@@ -290,6 +292,8 @@ class BaseEnv(VecEnv):
         self._termination_contact_time_buf[env_ids] = 0.0
         self._stuck_command_time_buf[env_ids] = 0.0
         self._stuck_command_reset_buf[env_ids] = False
+        self._speed_tracking_failure_time_buf[env_ids] = 0.0
+        self._speed_tracking_failure_reset_buf[env_ids] = False
 
         self.scene.write_data_to_sim()
         self.sim.forward()
@@ -339,6 +343,7 @@ class BaseEnv(VecEnv):
         net_contact_forces = self._tensor(self.contact_sensor.data.net_forces_w_history)
         time_out_buf = self.episode_length_buf >= self.max_episode_length
         self._stuck_command_reset_buf[:] = False
+        self._speed_tracking_failure_reset_buf[:] = False
 
         immediate_termination_contact = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         if self.immediate_termination_contact_cfg is not None:
@@ -356,7 +361,12 @@ class BaseEnv(VecEnv):
         immediate_termination_contact &= ~self._teleported_this_step_buf
 
         if not self._termination_contact_enabled:
-            reset_buf = immediate_termination_contact | self._compute_stuck_command_reset() | time_out_buf
+            reset_buf = (
+                immediate_termination_contact
+                | self._compute_stuck_command_reset()
+                | self._compute_speed_tracking_failure_reset()
+                | time_out_buf
+            )
             return reset_buf, time_out_buf
 
         delayed_termination_contact = torch.any(
@@ -382,6 +392,7 @@ class BaseEnv(VecEnv):
             reset_buf = self._termination_contact_time_buf >= self._termination_contact_delay_s
         reset_buf |= immediate_termination_contact
         reset_buf |= self._compute_stuck_command_reset()
+        reset_buf |= self._compute_speed_tracking_failure_reset()
         reset_buf |= time_out_buf
         return reset_buf, time_out_buf
 
@@ -405,6 +416,51 @@ class BaseEnv(VecEnv):
             0.0, float(self.cfg.robot.stuck_duration_s)
         )
         return self._stuck_command_reset_buf
+
+    def _compute_speed_tracking_failure_reset(self) -> torch.Tensor:
+        if not self.cfg.robot.terminate_when_speed_tracking_failed:
+            return self._speed_tracking_failure_reset_buf
+
+        command = self._command_tensor()
+        command_xy = command[:, :2]
+        command_speed = torch.norm(command_xy, dim=1)
+        root_quat_w = self._tensor(self.robot.data.root_quat_w)
+        root_lin_vel_w = self._tensor(self.robot.data.root_lin_vel_w)
+        root_lin_vel_yaw = math_utils.quat_apply_inverse(
+            math_utils.yaw_quat(root_quat_w), root_lin_vel_w[:, :3]
+        )
+        tracking_error = torch.norm(command_xy - root_lin_vel_yaw[:, :2], dim=1)
+        allowed_error = torch.maximum(
+            torch.full_like(command_speed, float(self.cfg.robot.speed_tracking_abs_error_threshold)),
+            command_speed * float(self.cfg.robot.speed_tracking_rel_error_threshold),
+        )
+        past_grace = self.episode_length_buf * self.step_dt >= max(
+            0.0, float(self.cfg.robot.speed_tracking_grace_s)
+        )
+        failed = (
+            (command_speed > float(self.cfg.robot.speed_tracking_command_threshold))
+            & (tracking_error > allowed_error)
+            & past_grace
+            & ~self._has_termination_body_contact()
+            & ~self._teleported_this_step_buf
+        )
+        contact_mask = failed.to(self._speed_tracking_failure_time_buf.dtype)
+        self._speed_tracking_failure_time_buf.mul_(contact_mask).add_(contact_mask * self.step_dt)
+        self._speed_tracking_failure_reset_buf[:] = self._speed_tracking_failure_time_buf >= max(
+            0.0, float(self.cfg.robot.speed_tracking_duration_s)
+        )
+        return self._speed_tracking_failure_reset_buf
+
+    def _has_termination_body_contact(self) -> torch.Tensor:
+        net_contact_forces = self._tensor(self.contact_sensor.data.net_forces_w_history)
+        return torch.any(
+            torch.max(
+                torch.norm(net_contact_forces[:, :, self.termination_contact_cfg.body_ids], dim=-1),
+                dim=1,
+            )[0]
+            > 1.0,
+            dim=1,
+        )
 
     def _draw_velocity_debug_arrows(self):
         if self._velocity_debug_draw is None:

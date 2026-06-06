@@ -151,6 +151,12 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
     env_cfg.robot.stuck_speed_threshold = 0.08
     env_cfg.robot.stuck_grace_s = 1.0
     env_cfg.robot.stuck_duration_s = 0.6
+    env_cfg.robot.terminate_when_speed_tracking_failed = True
+    env_cfg.robot.speed_tracking_command_threshold = 0.5
+    env_cfg.robot.speed_tracking_abs_error_threshold = 0.5
+    env_cfg.robot.speed_tracking_rel_error_threshold = 0.35
+    env_cfg.robot.speed_tracking_grace_s = 2.0
+    env_cfg.robot.speed_tracking_duration_s = 1.2
     env_cfg.robot.feet_body_names = [".*ankle_roll.*"]
     # A value of 0.0 falls back to MAGICBOT_Z1_CFG.init_state.pos[2] (0.69 m).
     env_cfg.commands.root_height = 0.0

@@ -66,6 +66,12 @@ class RobotCfg:
     stuck_speed_threshold: float = 0.08
     stuck_grace_s: float = 1.0
     stuck_duration_s: float = 0.6
+    terminate_when_speed_tracking_failed: bool = False
+    speed_tracking_command_threshold: float = 0.5
+    speed_tracking_abs_error_threshold: float = 0.5
+    speed_tracking_rel_error_threshold: float = 0.35
+    speed_tracking_grace_s: float = 2.0
+    speed_tracking_duration_s: float = 1.2
 
 
 @configclass
