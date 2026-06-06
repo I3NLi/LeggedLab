@@ -15,6 +15,7 @@ from isaaclab.utils import configclass
 
 import legged_lab.mdp as mdp
 from legged_lab.assets.unitree import G1_CFG
+from legged_lab.envs.base.base_config import EpisodeLengthCurriculumStageCfg
 from legged_lab.envs.base.base_env_config import (  # noqa:F401
     BaseAgentCfg,
     BaseEnvCfg,
@@ -137,9 +138,101 @@ class G1FlatEnvCfg(BaseEnvCfg):
         # Observation history.
         self.robot.actor_obs_history_length = 1
         self.robot.critic_obs_history_length = 1
-        self.episode_length_curriculum.enable = False
-        self.episode_length_curriculum.stages = []
+        # Speed-first flat curriculum. Stages keep lateral/yaw commands narrow while
+        # pushing forward velocity as aggressively as stability allows.
+        self.episode_length_curriculum.enable = True
+        self.episode_length_curriculum.round_episode_count = 2048
+        self.episode_length_curriculum.episode_length_ratio = 0.80
+        self.episode_length_curriculum.required_streak_rounds = 1
+        self.episode_length_curriculum.min_mean_reward = 0.0
+        self.episode_length_curriculum.max_forward_speed = -1.0
+        self.episode_length_curriculum.print_status = True
         self.reward.feet_air_time.weight = 0.25
+        self.episode_length_curriculum.stages = [
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                round_episode_count=1024,
+                episode_length_ratio=0.65,
+                min_mean_reward=-40.0,
+                lin_vel_x=(-0.2, 1.0),
+                lin_vel_y=(-0.25, 0.25),
+                ang_vel_z=(-0.3, 0.3),
+                feet_air_time_weight=0.25,
+            ),
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                round_episode_count=1536,
+                episode_length_ratio=0.70,
+                min_mean_reward=-20.0,
+                lin_vel_x=(0.5, 2.0),
+                lin_vel_y=(-0.25, 0.25),
+                ang_vel_z=(-0.25, 0.25),
+                track_lin_vel_xy_exp_weight=1.5,
+                track_ang_vel_z_exp_weight=1.2,
+            ),
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=1,
+                round_episode_count=2048,
+                episode_length_ratio=0.75,
+                min_mean_reward=-10.0,
+                reset_joint_pos_range=(0.45, 1.55),
+                lin_vel_x=(1.5, 3.2),
+                lin_vel_y=(-0.20, 0.20),
+                ang_vel_z=(-0.20, 0.20),
+                track_lin_vel_xy_exp_weight=2.0,
+                track_ang_vel_z_exp_weight=1.5,
+                energy_weight=-6.0e-4,
+                action_rate_l2_weight=-7.5e-3,
+            ),
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=2,
+                round_episode_count=3072,
+                episode_length_ratio=0.80,
+                min_mean_reward=0.0,
+                reset_joint_pos_range=(0.5, 1.5),
+                lin_vel_x=(2.8, 4.8),
+                lin_vel_y=(-0.15, 0.15),
+                ang_vel_z=(-0.15, 0.15),
+                track_lin_vel_xy_exp_weight=3.0,
+                track_ang_vel_z_exp_weight=2.0,
+                energy_weight=-3.0e-4,
+                action_rate_l2_weight=-5.0e-3,
+                joint_deviation_arms_weight=-0.12,
+            ),
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=2,
+                round_episode_count=4096,
+                episode_length_ratio=0.82,
+                min_mean_reward=5.0,
+                reset_joint_pos_range=(0.6, 1.4),
+                lin_vel_x=(4.2, 6.5),
+                lin_vel_y=(-0.10, 0.10),
+                ang_vel_z=(-0.12, 0.12),
+                track_lin_vel_xy_exp_weight=4.0,
+                track_ang_vel_z_exp_weight=2.5,
+                energy_weight=-2.0e-4,
+                action_rate_l2_weight=-4.0e-3,
+                joint_deviation_arms_weight=-0.08,
+                joint_deviation_hip_weight=-0.08,
+            ),
+            EpisodeLengthCurriculumStageCfg(
+                max_updates=-1,
+                round_episode_count=4096,
+                episode_length_ratio=0.80,
+                min_mean_reward=0.0,
+                reset_joint_pos_range=(0.6, 1.4),
+                lin_vel_x=(5.0, 8.0),
+                lin_vel_y=(-0.20, 0.20),
+                ang_vel_z=(-0.20, 0.20),
+                track_lin_vel_xy_exp_weight=5.0,
+                track_ang_vel_z_exp_weight=3.0,
+                energy_weight=-1.5e-4,
+                action_rate_l2_weight=-3.0e-3,
+                joint_deviation_arms_weight=-0.06,
+                joint_deviation_hip_weight=-0.05,
+                joint_deviation_legs_weight=-0.01,
+            ),
+        ]
 
         # # Emphasize tracking terms for flat ground.
         # self.reward.track_lin_vel_xy_exp.weight = 1.5
@@ -177,6 +270,8 @@ class G1RoughEnvCfg(G1FlatEnvCfg):
         self.scene.height_scanner.enable_height_scan = True
         self.scene.terrain_type = "generator"
         self.scene.terrain_generator = ROUGH_TERRAINS_CFG
+        self.episode_length_curriculum.enable = False
+        self.episode_length_curriculum.stages = []
         self.robot.actor_obs_history_length = 1
         self.robot.critic_obs_history_length = 1
         self.reward.feet_air_time.weight = 0.25
