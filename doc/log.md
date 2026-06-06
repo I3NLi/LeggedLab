@@ -215,9 +215,13 @@ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
 运行结果：
 - 非 headless GUI 正常启动。
 - GPU PhysX 未复现 Isaac Sim 4.5 下的 kernel error。
-- 已进入 learning iteration，确认至少运行到 iteration 25。
-- 训练进程记录：`PID 2473639`。
+- 已进入 learning iteration，确认运行到 iteration 132。
+- 训练进程记录：`PID 2473639`，后续已退出。
 - 日志目录：`/home/hiyio/LeggedLab/logs/g1_flat/2026-06-06_10-49-41`。
+- 退出原因：
+  - `ReferenceError: weakly-referenced object no longer exists`
+  - 触发点在 IsaacLab command manager 更新 velocity metrics 时读取 `robot.data.root_lin_vel_b`。
+  - 结论：`env_isaacsim51` 已经跑通训练入口和 rollout，但长稳训练还需要单独修复 IsaacLab 5.1/PhysX articulation data 生命周期问题。
 
 后续提交纪律：
 - 每完成一个可验证修改就提交一次，避免大杂烩 commit。
