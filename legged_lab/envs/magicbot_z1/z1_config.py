@@ -15,8 +15,6 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
     env_cfg.robot.terminate_contacts_body_names = [".*torso.*", "pelvis"]
     env_cfg.robot.terminate_contacts_delay_s = 0.0
     env_cfg.robot.feet_body_names = [".*ankle_roll.*"]
-    for stage_cfg in env_cfg.episode_length_curriculum.stages:
-        stage_cfg.termination_contact_delay_s = 0.0
 
     env_cfg.domain_rand.events.add_base_mass.params["asset_cfg"].body_names = ["torso_link"]
 

@@ -15,7 +15,6 @@ from isaaclab.utils import configclass
 
 import legged_lab.mdp as mdp
 from legged_lab.assets.unitree import G1_CFG
-from legged_lab.envs.base.base_config import EpisodeLengthCurriculumStageCfg
 from legged_lab.envs.base.base_env_config import (  # noqa:F401
     BaseAgentCfg,
     BaseEnvCfg,
@@ -135,118 +134,12 @@ class G1FlatEnvCfg(BaseEnvCfg):
         self.robot.feet_body_names = [".*ankle_roll.*"]
         # Domain randomization target (mass noise on torso).
         self.domain_rand.events.add_base_mass.params["asset_cfg"].body_names = [".*torso.*"]
-        # Speed curriculum and observation history.
+        # Observation history.
         self.robot.actor_obs_history_length = 1
         self.robot.critic_obs_history_length = 1
-        self.episode_length_curriculum.enable = True
-        self.episode_length_curriculum.round_episode_count = 6000
-        # Stage progression now uses real success gates: timeout ratio + mean episode reward.
-        self.episode_length_curriculum.episode_length_ratio = 0.85
-        self.episode_length_curriculum.required_streak_rounds = 2
-        self.episode_length_curriculum.min_mean_reward = 20.0
-        self.episode_length_curriculum.max_forward_speed = -1.0
-        self.episode_length_curriculum.print_status = True
+        self.episode_length_curriculum.enable = False
+        self.episode_length_curriculum.stages = []
         self.reward.feet_air_time.weight = 0.25
-        # Walking-to-running curriculum on true flat ground. Keep lateral and yaw
-        # ranges narrow at high speed so the policy first learns forward balance.
-        self.episode_length_curriculum.stages = [
-            # Stage 0: stable stepping and recovery around zero speed.
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
-                joint_deviation_arms_weight=-0.2,
-                termination_contact_delay_s=1.0,
-                lin_vel_x=(-0.3, 0.6),
-                lin_vel_y=(-0.3, 0.3),
-                ang_vel_z=(-0.4, 0.4),
-            ),
-            # Stage 1: normal walking.
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
-                joint_deviation_arms_weight=-0.2,
-                termination_contact_delay_s=1.0,
-                lin_vel_x=(0.0, 1.2),
-                lin_vel_y=(-0.4, 0.4),
-                ang_vel_z=(-0.6, 0.6),
-                feet_air_time_weight=0.25,
-            ),
-            # Stage 2: brisk walking with mild backward/lateral commands.
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
-                joint_deviation_arms_weight=-0.2,
-                termination_contact_delay_s=1.0,
-                lin_vel_x=(-0.5, 1.8),
-                lin_vel_y=(-0.6, 0.6),
-                ang_vel_z=(-0.8, 0.8),
-                track_lin_vel_xy_exp_weight=1.5,
-                track_ang_vel_z_exp_weight=1.5,
-            ),
-            # Stage 3: slow jog.
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=3,
-                joint_deviation_arms_weight=-0.2,
-                termination_contact_delay_s=1.0,
-                reset_joint_pos_range=(0.4, 1.6),
-                lin_vel_x=(1.2, 2.5),
-                lin_vel_y=(-0.6, 0.6),
-                ang_vel_z=(-0.6, 0.6),
-                track_lin_vel_xy_exp_weight=2.0,
-                track_ang_vel_z_exp_weight=2.0,
-            ),
-            # Stage 4: run.
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=3,
-                joint_deviation_arms_weight=-0.12,
-                termination_contact_delay_s=1.0,
-                reset_joint_pos_range=(0.5, 1.5),
-                lin_vel_x=(2.2, 3.5),
-                lin_vel_y=(-0.5, 0.5),
-                ang_vel_z=(-0.5, 0.5),
-                track_lin_vel_xy_exp_weight=2.5,
-                track_ang_vel_z_exp_weight=2.5,
-                energy_weight=-5.0e-4,
-                action_rate_l2_weight=-7.5e-3,
-            ),
-            # Stage 5: fast run.
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=3,
-                joint_deviation_arms_weight=-0.08,
-                termination_contact_delay_s=1.0,
-                lin_vel_x=(3.2, 4.8),
-                lin_vel_y=(-0.4, 0.4),
-                ang_vel_z=(-0.4, 0.4),
-                track_lin_vel_xy_exp_weight=3.0,
-                track_ang_vel_z_exp_weight=3.0,
-                energy_weight=-3.0e-4,
-                action_rate_l2_weight=-5.0e-3,
-            ),
-            # Stage 6: sprint band.
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=4,
-                joint_deviation_arms_weight=-0.05,
-                termination_contact_delay_s=1.0,
-                lin_vel_x=(4.5, 6.2),
-                lin_vel_y=(-0.3, 0.3),
-                ang_vel_z=(-0.3, 0.3),
-                track_lin_vel_xy_exp_weight=3.5,
-                track_ang_vel_z_exp_weight=3.5,
-                energy_weight=-2.0e-4,
-                action_rate_l2_weight=-4.0e-3,
-            ),
-            # Stage 7: mixed walking/running once the gait is stable.
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=-1,
-                joint_deviation_arms_weight=-0.05,
-                termination_contact_delay_s=1.0,
-                reset_joint_pos_range=(0.4, 1.6),
-                lin_vel_x=(-1.0, 6.5),
-                lin_vel_y=(-0.8, 0.8),
-                ang_vel_z=(-0.8, 0.8),
-                track_lin_vel_xy_exp_weight=4.0,
-                track_ang_vel_z_exp_weight=4.0,
-                energy_weight=-2.0e-4,
-                action_rate_l2_weight=-4.0e-3,
-            ),
-        ]
 
         # # Emphasize tracking terms for flat ground.
         # self.reward.track_lin_vel_xy_exp.weight = 1.5
@@ -265,46 +158,8 @@ class G1GravelEnvCfg(G1FlatEnvCfg):
         # Small generated gravel terrain for bounded-terrain robustness training.
         self.scene.terrain_type = "generator"
         self.scene.terrain_generator = GRAVEL_TERRAINS_CFG
-        self.episode_length_curriculum.stages = [
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
-                joint_deviation_arms_weight=-0.2,
-                termination_contact_delay_s=1.0,
-                lin_vel_x=(-0.2, 0.8),
-                lin_vel_y=(-0.3, 0.3),
-                ang_vel_z=(-0.4, 0.4),
-            ),
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=2,
-                joint_deviation_arms_weight=-0.2,
-                termination_contact_delay_s=1.0,
-                lin_vel_x=(0.0, 1.4),
-                lin_vel_y=(-0.4, 0.4),
-                ang_vel_z=(-0.5, 0.5),
-                track_lin_vel_xy_exp_weight=1.5,
-                track_ang_vel_z_exp_weight=1.5,
-            ),
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=3,
-                joint_deviation_arms_weight=-0.15,
-                termination_contact_delay_s=1.0,
-                lin_vel_x=(1.0, 2.2),
-                lin_vel_y=(-0.4, 0.4),
-                ang_vel_z=(-0.5, 0.5),
-                track_lin_vel_xy_exp_weight=2.0,
-                track_ang_vel_z_exp_weight=2.0,
-            ),
-            EpisodeLengthCurriculumStageCfg(
-                max_updates=-1,
-                joint_deviation_arms_weight=-0.1,
-                termination_contact_delay_s=1.0,
-                lin_vel_x=(-0.5, 2.8),
-                lin_vel_y=(-0.5, 0.5),
-                ang_vel_z=(-0.6, 0.6),
-                track_lin_vel_xy_exp_weight=2.5,
-                track_ang_vel_z_exp_weight=2.5,
-            ),
-        ]
+        self.episode_length_curriculum.enable = False
+        self.episode_length_curriculum.stages = []
 
 
 @configclass
