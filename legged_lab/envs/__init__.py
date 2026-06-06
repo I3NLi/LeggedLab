@@ -30,6 +30,12 @@ from legged_lab.envs.h1.h1_config import (
     H1RoughAgentCfg,
     H1RoughEnvCfg,
 )
+from legged_lab.envs.magicbot_z1.z1_config import (
+    MagicBotZ1FlatAgentCfg,
+    MagicBotZ1FlatEnvCfg,
+    MagicBotZ1RoughAgentCfg,
+    MagicBotZ1RoughEnvCfg,
+)
 from legged_lab.utils.task_registry import task_registry
 
 task_registry.register("h1_flat", BaseEnv, H1FlatEnvCfg(), H1FlatAgentCfg())
@@ -38,3 +44,5 @@ task_registry.register("g1_flat", BaseEnv, G1FlatEnvCfg(), G1FlatAgentCfg())
 task_registry.register("g1_rough", BaseEnv, G1RoughEnvCfg(), G1RoughAgentCfg())
 task_registry.register("gr2_flat", BaseEnv, GR2FlatEnvCfg(), GR2FlatAgentCfg())
 task_registry.register("gr2_rough", BaseEnv, GR2RoughEnvCfg(), GR2RoughAgentCfg())
+task_registry.register("magicbot_z1_flat", BaseEnv, MagicBotZ1FlatEnvCfg(), MagicBotZ1FlatAgentCfg())
+task_registry.register("magicbot_z1_rough", BaseEnv, MagicBotZ1RoughEnvCfg(), MagicBotZ1RoughAgentCfg())
