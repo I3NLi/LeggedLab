@@ -61,6 +61,11 @@ class RobotCfg:
     feet_body_names: list = []
     # Allow brief recovery after a fall before terminating the episode.
     terminate_contacts_delay_s: float = 1.0
+    terminate_when_stuck: bool = False
+    stuck_command_threshold: float = 0.2
+    stuck_speed_threshold: float = 0.08
+    stuck_grace_s: float = 1.0
+    stuck_duration_s: float = 0.6
 
 
 @configclass

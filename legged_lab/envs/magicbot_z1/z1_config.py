@@ -23,7 +23,7 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
         EpisodeLengthCurriculumStageCfg(
             max_updates=1,
             round_episode_count=1024,
-            episode_length_ratio=0.95,
+            episode_length_ratio=0.75,
             min_mean_reward=-120.0,
             termination_contact_enabled=False,
             reset_joint_pos_range=(0.20, 1.80),
@@ -55,7 +55,7 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
         EpisodeLengthCurriculumStageCfg(
             max_updates=1,
             round_episode_count=2048,
-            episode_length_ratio=0.95,
+            episode_length_ratio=0.75,
             min_mean_reward=-100.0,
             termination_contact_enabled=True,
             termination_contact_delay_s=1.0,
@@ -89,7 +89,7 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
         EpisodeLengthCurriculumStageCfg(
             max_updates=1,
             round_episode_count=3072,
-            episode_length_ratio=0.95,
+            episode_length_ratio=0.80,
             min_mean_reward=-80.0,
             termination_contact_enabled=True,
             termination_contact_delay_s=1.0,
@@ -149,6 +149,11 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
     env_cfg.robot.terminate_contacts_body_names = [".*torso.*", "pelvis"]
     env_cfg.robot.immediate_terminate_contacts_body_names = [".*shoulder.*", ".*head.*"]
     env_cfg.robot.terminate_contacts_delay_s = 0.0
+    env_cfg.robot.terminate_when_stuck = True
+    env_cfg.robot.stuck_command_threshold = 0.25
+    env_cfg.robot.stuck_speed_threshold = 0.08
+    env_cfg.robot.stuck_grace_s = 1.0
+    env_cfg.robot.stuck_duration_s = 0.6
     env_cfg.robot.feet_body_names = [".*ankle_roll.*"]
 
     env_cfg.domain_rand.events.add_base_mass.params["asset_cfg"].body_names = ["torso_link"]
