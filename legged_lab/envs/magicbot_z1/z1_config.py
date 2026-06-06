@@ -135,8 +135,6 @@ def _apply_magicbot_z1_flat_recovery_curriculum(env_cfg) -> None:
             track_ang_vel_z_exp_weight=3.0,
             energy_weight=-1.5e-4,
             action_rate_l2_weight=-3.0e-3,
-            joint_deviation_arms_weight=-0.06,
-            joint_deviation_hip_weight=-0.05,
         ),
     ]
 
@@ -192,6 +190,9 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
         "contact_sensor", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]
     )
     env_cfg.reward.feet_too_near.params["asset_cfg"] = SceneEntityCfg(
+        "robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]
+    )
+    env_cfg.reward.feet_too_far.params["asset_cfg"] = SceneEntityCfg(
         "robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]
     )
     env_cfg.reward.feet_stumble.params["sensor_cfg"] = SceneEntityCfg(

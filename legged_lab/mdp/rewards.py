@@ -178,3 +178,13 @@ def feet_too_near_humanoid(
     feet_pos = env._tensor(asset.data.body_pos_w)[:, asset_cfg.body_ids, :]
     distance = torch.norm(feet_pos[:, 0] - feet_pos[:, 1], dim=-1)
     return (threshold - distance).clamp(min=0)
+
+
+def feet_too_far_humanoid(
+    env: BaseEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), threshold: float = 0.45
+) -> torch.Tensor:
+    assert len(asset_cfg.body_ids) == 2
+    asset: Articulation = env.scene[asset_cfg.name]
+    feet_pos = env._tensor(asset.data.body_pos_w)[:, asset_cfg.body_ids, :]
+    distance = torch.norm(feet_pos[:, 0] - feet_pos[:, 1], dim=-1)
+    return (distance - threshold).clamp(min=0)

@@ -92,6 +92,11 @@ class G1RewardCfg(RewardCfg):
         weight=-2.0,
         params={"asset_cfg": SceneEntityCfg("robot", body_names=[".*ankle_roll.*"]), "threshold": 0.2},
     )
+    feet_too_far = RewTerm(
+        func=mdp.feet_too_far_humanoid,
+        weight=-2.0,
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=[".*ankle_roll.*"]), "threshold": 0.45},
+    )
     feet_stumble = RewTerm(
         func=mdp.feet_stumble,
         weight=-2.0,
@@ -236,8 +241,6 @@ class G1FlatEnvCfg(BaseEnvCfg):
                 track_ang_vel_z_exp_weight=3.0,
                 energy_weight=-1.5e-4,
                 action_rate_l2_weight=-3.0e-3,
-                joint_deviation_arms_weight=-0.06,
-                joint_deviation_hip_weight=-0.05,
             ),
         ]
 
