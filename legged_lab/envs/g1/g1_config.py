@@ -167,7 +167,7 @@ class G1FlatEnvCfg(BaseEnvCfg):
             EpisodeLengthCurriculumStageCfg(
                 max_updates=1,
                 round_episode_count=1536,
-                episode_length_ratio=0.70,
+                episode_length_ratio=0.95,
                 min_mean_reward=-20.0,
                 lin_vel_x=(-0.5, 2.0),
                 lin_vel_y=(-0.25, 0.25),
