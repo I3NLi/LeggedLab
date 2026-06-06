@@ -28,6 +28,87 @@ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
   --kit_args=--portable
 ```
 
+**MagicBot Z1 Locomotion**
+
+Z1 任务名：
+
+- `magicbot_z1_flat`: 平地 locomotion，日志目录 `logs/magicbot_z1_flat/`。
+- `magicbot_z1_rough`: rough terrain locomotion，日志目录 `logs/magicbot_z1_rough/`。
+
+安装/更新本仓：
+
+```bash
+cd /home/hiyio/LeggedLab
+PYTHONNOUSERSITE=1 /home/hiyio/anaconda3/envs/env_isaacsim51/bin/python -m pip install -e .
+```
+
+Z1 小规模训练 smoke test：
+
+```bash
+cd /home/hiyio/LeggedLab
+
+OMNI_KIT_ACCEPT_EULA=YES \
+PYTHONNOUSERSITE=1 \
+PYTHONPATH=/home/hiyio/LeggedLab \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task=magicbot_z1_flat \
+  --logger=tensorboard \
+  --num_envs=64 \
+  --headless \
+  --device=cuda:0 \
+  --kit_args=--portable
+```
+
+Z1 恢复训练示例：
+
+```bash
+cd /home/hiyio/LeggedLab
+
+OMNI_KIT_ACCEPT_EULA=YES \
+PYTHONNOUSERSITE=1 \
+PYTHONPATH=/home/hiyio/LeggedLab \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task=magicbot_z1_flat \
+  --num_envs=4096 \
+  --headless \
+  --resume=True \
+  --load_run=latest \
+  --checkpoint=latest \
+  --logger=tensorboard \
+  --device=cuda:0 \
+  --kit_args=--portable
+```
+
+Z1 回放并导出策略文件（本机已验证）：
+
+```bash
+cd /home/hiyio/LeggedLab
+
+OMNI_KIT_ACCEPT_EULA=YES \
+PYTHONNOUSERSITE=1 \
+PYTHONPATH=/home/hiyio/LeggedLab \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/play.py \
+  --task=magicbot_z1_flat \
+  --headless \
+  --export_only \
+  --num_envs=1 \
+  --load_run=2026-06-06_12-13-53_z1_flat_8192_rebuild_20260606 \
+  --checkpoint=model_7500.pt \
+  --device=cuda:0 \
+  --kit_args=--portable
+```
+
+导出结果位置：
+
+```text
+/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-06_12-13-53_z1_flat_8192_rebuild_20260606/exported/
+```
+
+包含 `policy.pt`、`policy.onnx` 和 `policy.onnx.data`。如果需要可视化回放，去掉 `--headless --export_only`，并按显存情况调小 `--num_envs`。
+
 常规 headless 训练命令（G1 平地）：
 
 ```bash
