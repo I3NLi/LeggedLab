@@ -151,10 +151,15 @@ class BaseEnv(VecEnv):
         self._termination_contact_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self._stuck_command_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self._stuck_command_reset_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._root_height_command = self._resolve_root_height_command()
+        self._root_height_command_buf = torch.full(
+            (self.num_envs, 1), self._root_height_command, device=self.device
+        )
         self._termination_contact_delay_s = max(0.0, float(self.cfg.robot.terminate_contacts_delay_s))
         self._termination_contact_enabled = True
         self._static_log_info = {
             "Config/termination_delay_s": float(self._termination_contact_delay_s),
+            "Config/root_height_command": float(self._root_height_command),
         }
         self._episode_len_curriculum_round = 0
         self._episode_len_curriculum_sum = 0.0
@@ -212,7 +217,13 @@ class BaseEnv(VecEnv):
         return current_actor_obs, current_critic_obs
 
     def _command_tensor(self):
-        return self._tensor(self.command_generator.command)
+        return torch.cat([self._tensor(self.command_generator.command), self._root_height_command_buf], dim=-1)
+
+    def _resolve_root_height_command(self):
+        root_height = float(self.cfg.commands.root_height)
+        if root_height > 0.0:
+            return root_height
+        return float(self.cfg.scene.robot.init_state.pos[2])
 
     def _tensor(self, value):
         return torch.as_tensor(value, dtype=torch.float32, device=self.device)
