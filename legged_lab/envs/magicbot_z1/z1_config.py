@@ -188,9 +188,6 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
     env_cfg.reward.feet_too_near.params["asset_cfg"] = SceneEntityCfg(
         "robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]
     )
-    env_cfg.reward.feet_too_far.params["asset_cfg"] = SceneEntityCfg(
-        "robot", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]
-    )
     env_cfg.reward.feet_stumble.params["sensor_cfg"] = SceneEntityCfg(
         "contact_sensor", body_names=["left_ankle_roll_link", "right_ankle_roll_link"]
     )
