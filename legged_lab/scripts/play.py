@@ -119,7 +119,9 @@ def play():
 
         keyboard = Keyboard(env)  # noqa:F841
 
-    obs, _ = env.get_observations()
+    obs = env.get_observations()
+    if isinstance(obs, tuple):
+        obs, _ = obs
 
     while simulation_app.is_running():
 
