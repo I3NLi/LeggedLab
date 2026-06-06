@@ -28,6 +28,7 @@ parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
+parser.add_argument("--play_lin_vel_x_min", type=float, default=None, help="Minimum linear velocity command on x-axis.")
 parser.add_argument("--play_lin_vel_x", type=float, default=0.6, help="Fixed linear velocity command on x-axis.")
 parser.add_argument("--play_lin_vel_y", type=float, default=0.0, help="Fixed linear velocity command on y-axis.")
 parser.add_argument("--play_heading", type=float, default=0.0, help="Fixed heading command.")
@@ -68,8 +69,10 @@ def play():
     env_cfg.scene.max_episode_length_s = 40.0
     env_cfg.scene.num_envs = 50
     env_cfg.scene.env_spacing = 2.5
-    # keep default backward speed (min), set forward speed (max) from CLI
+    # Keep default backward speed unless a minimum forward speed is provided.
     lin_vel_x_min, _lin_vel_x_max = env_cfg.commands.ranges.lin_vel_x
+    if args_cli.play_lin_vel_x_min is not None:
+        lin_vel_x_min = args_cli.play_lin_vel_x_min
     env_cfg.commands.ranges.lin_vel_x = (lin_vel_x_min, args_cli.play_lin_vel_x)
     env_cfg.commands.ranges.lin_vel_y = (args_cli.play_lin_vel_y, args_cli.play_lin_vel_y)
     env_cfg.commands.ranges.heading = (args_cli.play_heading, args_cli.play_heading)
