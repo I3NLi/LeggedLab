@@ -151,6 +151,12 @@ class BaseEnv(VecEnv):
         self._termination_contact_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self._speed_tracking_failure_time_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self._speed_tracking_failure_reset_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._reset_reason_timeout_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._reset_reason_head_shoulder_contact_buf = torch.zeros(
+            self.num_envs, device=self.device, dtype=torch.bool
+        )
+        self._reset_reason_body_contact_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._reset_reason_speed_tracking_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._root_height_command = self._resolve_root_height_command()
         self._root_height_command_buf = torch.full(
             (self.num_envs, 1), self._root_height_command, device=self.device
@@ -276,6 +282,7 @@ class BaseEnv(VecEnv):
 
         reward_extras = self.reward_manager.reset(env_ids)
         self.extras["log"].update(reward_extras)
+        self._log_reset_reasons(env_ids)
         self._update_episode_length_curriculum(env_ids)
         self.extras["time_outs"] = self.time_out_buf
 
@@ -290,6 +297,10 @@ class BaseEnv(VecEnv):
         self._termination_contact_time_buf[env_ids] = 0.0
         self._speed_tracking_failure_time_buf[env_ids] = 0.0
         self._speed_tracking_failure_reset_buf[env_ids] = False
+        self._reset_reason_timeout_buf[env_ids] = False
+        self._reset_reason_head_shoulder_contact_buf[env_ids] = False
+        self._reset_reason_body_contact_buf[env_ids] = False
+        self._reset_reason_speed_tracking_buf[env_ids] = False
 
         self.scene.write_data_to_sim()
         self.sim.forward()
@@ -339,6 +350,7 @@ class BaseEnv(VecEnv):
         net_contact_forces = self._tensor(self.contact_sensor.data.net_forces_w_history)
         time_out_buf = self.episode_length_buf >= self.max_episode_length
         self._speed_tracking_failure_reset_buf[:] = False
+        self._reset_reason_timeout_buf[:] = time_out_buf
 
         immediate_termination_contact = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         if self.immediate_termination_contact_cfg is not None:
@@ -354,11 +366,15 @@ class BaseEnv(VecEnv):
                 dim=1,
             )
         immediate_termination_contact &= ~self._teleported_this_step_buf
+        self._reset_reason_head_shoulder_contact_buf[:] = immediate_termination_contact
 
         if not self._termination_contact_enabled:
+            speed_tracking_reset = self._compute_speed_tracking_failure_reset()
+            self._reset_reason_body_contact_buf[:] = False
+            self._reset_reason_speed_tracking_buf[:] = speed_tracking_reset
             reset_buf = (
                 immediate_termination_contact
-                | self._compute_speed_tracking_failure_reset()
+                | speed_tracking_reset
                 | time_out_buf
             )
             return reset_buf, time_out_buf
@@ -384,10 +400,55 @@ class BaseEnv(VecEnv):
             contact_mask = delayed_termination_contact.to(self._termination_contact_time_buf.dtype)
             self._termination_contact_time_buf.mul_(contact_mask).add_(contact_mask * self.step_dt)
             reset_buf = self._termination_contact_time_buf >= self._termination_contact_delay_s
+        self._reset_reason_body_contact_buf[:] = reset_buf
         reset_buf |= immediate_termination_contact
-        reset_buf |= self._compute_speed_tracking_failure_reset()
+        speed_tracking_reset = self._compute_speed_tracking_failure_reset()
+        self._reset_reason_speed_tracking_buf[:] = speed_tracking_reset
+        reset_buf |= speed_tracking_reset
         reset_buf |= time_out_buf
         return reset_buf, time_out_buf
+
+    def _log_reset_reasons(self, env_ids):
+        env_ids = env_ids[self.episode_length_buf[env_ids] > 0]
+        episode_count = int(env_ids.numel())
+        if episode_count == 0:
+            return
+
+        timeout = self._reset_reason_timeout_buf[env_ids]
+        head_shoulder = self._reset_reason_head_shoulder_contact_buf[env_ids] & ~timeout
+        body_contact = self._reset_reason_body_contact_buf[env_ids] & ~timeout & ~head_shoulder
+        speed_tracking = (
+            self._reset_reason_speed_tracking_buf[env_ids] & ~timeout & ~head_shoulder & ~body_contact
+        )
+        other = ~(timeout | head_shoulder | body_contact | speed_tracking)
+        denominator = float(max(episode_count, 1))
+
+        def _count(mask):
+            return float(mask.sum().item())
+
+        timeout_count = _count(timeout)
+        head_shoulder_count = _count(head_shoulder)
+        body_contact_count = _count(body_contact)
+        speed_tracking_count = _count(speed_tracking)
+        other_count = _count(other)
+        non_timeout_count = denominator - timeout_count
+
+        self.extras["log"].update(
+            {
+                "Reset/episode_count": float(episode_count),
+                "Reset/timeout_count": timeout_count,
+                "Reset/head_shoulder_contact_count": head_shoulder_count,
+                "Reset/body_contact_count": body_contact_count,
+                "Reset/speed_tracking_failure_count": speed_tracking_count,
+                "Reset/other_count": other_count,
+                "Reset/timeout_ratio": timeout_count / denominator,
+                "Reset/head_shoulder_contact_ratio": head_shoulder_count / denominator,
+                "Reset/body_contact_ratio": body_contact_count / denominator,
+                "Reset/speed_tracking_failure_ratio": speed_tracking_count / denominator,
+                "Reset/other_ratio": other_count / denominator,
+                "Reset/non_timeout_ratio": non_timeout_count / denominator,
+            }
+        )
 
     def _compute_speed_tracking_failure_reset(self) -> torch.Tensor:
         if not self.cfg.robot.terminate_when_speed_tracking_failed:
