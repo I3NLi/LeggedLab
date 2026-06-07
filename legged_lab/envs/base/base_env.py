@@ -185,6 +185,7 @@ class BaseEnv(VecEnv):
         self._rsl_rl_uses_tensordict_obs = self._detect_rsl_rl_tensordict_observations()
         self._velocity_debug_draw = None
         self._velocity_debug_vis_enabled = bool(self.cfg.commands.debug_vis and not self.headless)
+        self.command_metrics_enabled = True
         if self._velocity_debug_vis_enabled:
             import isaacsim.util.debug_draw._debug_draw as omni_debug_draw
 
@@ -323,7 +324,7 @@ class BaseEnv(VecEnv):
             self.sim.render()
 
         self.episode_length_buf += 1
-        self.command_generator.compute(self.step_dt)
+        self._compute_command_generator()
         self._draw_velocity_debug_arrows()
         if "interval" in self.event_manager.available_modes:
             self.event_manager.apply(mode="interval", dt=self.step_dt)
@@ -345,6 +346,17 @@ class BaseEnv(VecEnv):
         if self._rsl_rl_uses_tensordict_obs:
             return self._obs_tensor_dict(actor_obs, critic_obs), reward_buf, self.reset_buf, self.extras
         return actor_obs, reward_buf, self.reset_buf, self.extras
+
+    def _compute_command_generator(self):
+        if self.command_metrics_enabled:
+            self.command_generator.compute(self.step_dt)
+            return
+
+        self.command_generator.time_left -= self.step_dt
+        resample_env_ids = (self.command_generator.time_left <= 0.0).nonzero().flatten()
+        if len(resample_env_ids) > 0:
+            self.command_generator._resample(resample_env_ids)
+        self.command_generator._update_command()
 
     def check_reset(self):
         net_contact_forces = self._tensor(self.contact_sensor.data.net_forces_w_history)
