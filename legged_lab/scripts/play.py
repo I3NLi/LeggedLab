@@ -78,7 +78,6 @@ def play():
     env_cfg.commands.ranges.lin_vel_y = (args_cli.play_lin_vel_y, args_cli.play_lin_vel_y)
     env_cfg.commands.ranges.ang_vel_z = (0.0, 0.0)
     env_cfg.commands.ranges.heading = (args_cli.play_heading, args_cli.play_heading)
-    env_cfg.commands.rel_standing_envs = 0.0
     env_cfg.commands.heading_command = False
     env_cfg.scene.height_scanner.drift_range = (0.0, 0.0)
 
