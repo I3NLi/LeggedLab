@@ -105,6 +105,10 @@ def is_terminated(env: BaseEnv) -> torch.Tensor:
     return env.reset_buf * ~env.time_out_buf
 
 
+def is_head_shoulder_contact_terminated(env: BaseEnv) -> torch.Tensor:
+    return env._reset_reason_head_shoulder_contact_buf * ~env.time_out_buf
+
+
 def feet_air_time_positive_biped(env: BaseEnv, threshold: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     air_time = env._tensor(contact_sensor.data.current_air_time)[:, sensor_cfg.body_ids]

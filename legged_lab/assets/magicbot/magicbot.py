@@ -47,7 +47,7 @@ MAGICBOT_Z1_URDF = (
     / "SR-URDF_0410-02_isaaclab.urdf"
 )
 
-NATURAL_FREQ = 10 * 2.0 * 3.1415926535
+NATURAL_FREQ = 15 * 2.0 * 3.1415926535
 DAMPING_RATIO = 2.0
 
 # 120 Nm and 50 Nm motor family values come from the MagicBot Z1 locomotion assets

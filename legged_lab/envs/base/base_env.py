@@ -597,12 +597,18 @@ class BaseEnv(VecEnv):
             noise_scales = self.cfg.noise.noise_scales
             noise_vec[:3] = noise_scales.ang_vel * self.obs_scales.ang_vel
             noise_vec[3:6] = noise_scales.projected_gravity * self.obs_scales.projected_gravity
-            noise_vec[6:9] = 0
-            noise_vec[9 : 9 + self.num_actions] = noise_scales.joint_pos * self.obs_scales.joint_pos
-            noise_vec[9 + self.num_actions : 9 + self.num_actions * 2] = (
+            command_start = 6
+            command_end = command_start + self._command_tensor().shape[1]
+            joint_pos_start = command_end
+            joint_vel_start = joint_pos_start + self.num_actions
+            action_start = joint_vel_start + self.num_actions
+            action_end = action_start + self.num_actions
+            noise_vec[command_start:command_end] = 0.0
+            noise_vec[joint_pos_start:joint_vel_start] = noise_scales.joint_pos * self.obs_scales.joint_pos
+            noise_vec[joint_vel_start:action_start] = (
                 noise_scales.joint_vel * self.obs_scales.joint_vel
             )
-            noise_vec[9 + self.num_actions * 2 : 9 + self.num_actions * 3] = 0.0
+            noise_vec[action_start:action_end] = 0.0
             self.noise_scale_vec = noise_vec
 
             if self.cfg.scene.height_scanner.enable_height_scan:
