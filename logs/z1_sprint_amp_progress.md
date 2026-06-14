@@ -3012,3 +3012,66 @@ Stage2H conclusion:
   - do not deploy Stage2H before visual play.
   - if continuing training from Stage2H, do not widen speed further; instead stabilize `4.0-4.5` and reduce speed-tracking resets.
   - if choosing a deployment/play candidate right now, prefer Stage2F because it is visually accepted.
+
+Stage2H extra validation against Stage2F:
+
+- Purpose:
+  check whether Stage2H's `3.0 -> 4.5 -> 3.0` profile result is truly better than the visually accepted Stage2F baseline under the same command profile, and compare fixed `4.5 m/s` directly.
+- Stage2F command-profile eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/eval_command_profile_23550_3p0_4p5_3p0_env16.txt`
+- Stage2F fixed `4.5 m/s` eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/eval_fixed_speed_23550_env128_4p5.txt`
+
+Command-profile comparison (`3.0 -> 4.5 -> 3.0`, `16 envs`, warmup `1s @ 3.0`):
+
+| checkpoint | segment target | mean vx | first 1s vx | last 1s vx | abs err | p90 abs vx | mean tilt xy | p90 tilt xy | resets |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2F 23550 | 3.00 | 2.7114 | 2.2088 | 3.0451 | 0.3825 | 3.1678 | 0.0570 | 0.1291 | 0 |
+| Stage2H 23575 | 3.00 | 2.7715 | 2.2846 | 3.0976 | 0.3780 | 3.2249 | 0.0564 | 0.1414 | 0 |
+| Stage2F 23550 | 4.50 | 3.7443 | 3.3098 | 4.0103 | 0.7557 | 4.1564 | 0.0467 | 0.0773 | 0 |
+| Stage2H 23575 | 4.50 | 3.8389 | 3.3752 | 4.1076 | 0.6612 | 4.2552 | 0.0477 | 0.0786 | 0 |
+| Stage2F 23550 | 3.00 | 3.2504 | 3.5502 | 3.0847 | 0.2721 | 3.7472 | 0.0381 | 0.0627 | 0 |
+| Stage2H 23575 | 3.00 | 3.3162 | 3.6297 | 3.1301 | 0.3264 | 3.8030 | 0.0360 | 0.0606 | 0 |
+
+Fixed `4.5 m/s` direct comparison (`num_envs=128`, `duration=8`, `warmup=3`):
+
+| checkpoint | target | mean vx | abs err | p50 vx | p90 abs vx | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2F 23550 | 4.50 | 2.9308 | 1.5704 | 3.7212 | 4.2650 | 56 | 9 | 47 |
+| Stage2H 23575 | 4.50 | 2.8996 | 1.6029 | 3.7953 | 4.3374 | 78 | 18 | 60 |
+
+Updated Stage2H interpretation:
+
+- Stage2H gives a real but small dynamic-profile speed improvement at the `4.5 m/s` segment:
+  - mean vx `3.7443 -> 3.8389`
+  - last-second mean vx `4.0103 -> 4.1076`
+  - abs err `0.7557 -> 0.6612`
+  - resets remain `0`
+- Stage2H is worse in fixed `4.5 m/s`:
+  - resets `56 -> 78`
+  - speed-tracking resets `47 -> 60`
+  - head/shoulder resets `9 -> 18`
+- Decision:
+  - keep Stage2F `model_23550.pt` as the primary candidate.
+  - keep Stage2H `model_23575.pt` only as an experimental reference showing a small dynamic `4.5 m/s` profile gain.
+  - do not continue widening speed; the next training should stabilize fixed `4.0-4.5 m/s` and reduce speed-tracking resets.
+
+Stage2H play/export validation:
+
+- A short foreground play smoke reached Isaac App ready, built the env, exported policy artifacts, and was stopped by a deliberate `timeout 25s`.
+- Constant GUI play then started successfully:
+  - PID: `3940677`
+  - task: `magicbot_z1_flat_sprint_amp_stage2h_speedextend`
+  - checkpoint: `model_23575.pt`
+  - envs: `16`
+  - command range: `lin_vel_x=(3.0, 4.5)`, `lin_vel_y=0.0`, `ang_vel_z=0.0`
+  - velocity debug visualization: enabled
+  - stdout log:
+    `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2h_play_23575_cmdx3p0_4p5_env16_20260614_215833.out`
+- Exported policy artifacts:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_21-43-28_z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env2048_20260614_214310/exported/policy.pt`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_21-43-28_z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env2048_20260614_214310/exported/policy.onnx`
+- ONNX shape:
+  - input: `obs [1, 82]`
+  - output: `actions [1, 24]`
+- Human visual feedback is still pending; do not deploy Stage2H until the running play is inspected.
