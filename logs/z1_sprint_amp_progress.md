@@ -3511,3 +3511,51 @@ Stage2J play/export validation:
 - exported artifacts:
   - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947/exported/policy.pt`
   - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947/exported/policy.onnx`
+
+## Stage2K: mixed straight-speed retention and turning robustness
+
+Purpose:
+
+- Build from Stage2J `model_23625.pt`.
+- Preserve the turning/lateral robustness that Stage2J gained.
+- Recover more straight-line high-speed retention, because Stage2J still under-tracks sustained `4.25-4.5 m/s`.
+- Do not jump toward `8 m/s`; this remains a Stage 2 consolidation step around `4-5 m/s`.
+
+Config changes:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2k_mixedretention`
+- base: `MagicBotZ1FlatSprintAMPStage2JTurnRobustEnvCfg`
+- command range:
+  - `lin_vel_x=(3.5, 4.65)`
+  - `lin_vel_y=(-0.22, 0.22)`
+  - `ang_vel_z=(-0.40, 0.40)`
+- reference motion:
+  - `min_command_speed=3.5`
+  - `max_reference_speed=5.3`
+  - `speed_match_tolerance=0.70`
+- reward tuning:
+  - `track_lin_vel_xy_exp.weight=1.95`
+  - `track_lin_vel_xy_exp.std=0.95`
+  - `track_ang_vel_z_exp.weight=1.30`
+  - `track_ang_vel_z_exp.std=0.55`
+  - `forward_speed_progress.weight=0.30`
+  - `forward_speed_progress.min_command_x=3.5`
+- retained safety/regularization:
+  - `speed_tracking_duration_s=2.5`
+  - `energy.weight=-6e-4`
+  - `action_rate_l2.weight=-7.5e-3`
+  - head/shoulder contact termination and penalty unchanged from Stage2F+
+- agent:
+  - `learning_rate=3e-5`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.5`
+  - `save_interval=25`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- registry check passed:
+  - task resolves as `magicbot_z1_flat_sprint_amp_stage2k_mixedretention`
+  - command ranges, reward weights, AMP gate, and `speed_tracking_duration_s=2.5` match the intended Stage2K settings.
