@@ -1807,3 +1807,66 @@ Conclusion:
 - Deploy YAML `joint2motor_idx` maps this Isaac/policy order into MuJoCo actuator order.
 - Action/joint order is therefore not the likely cause of the Stage2A native MuJoCo high-speed fall.
 - Next likely mismatch class: MuJoCo XML/contact/inertia/solver behavior versus the Isaac training asset, especially feet/contact and shoulder axis reorientation warnings.
+
+## Native Deploy Fix: Target Rate Limit
+
+Date: `2026-06-14`
+
+Finding:
+
+- C++ deploy applied extra target limiting after ONNX inference:
+  - `torque_limited_target(...)`
+  - `clamp_and_rate_limit(..., max_target_rate=4 rad/s, policy_dt=0.02)`
+- This allowed only `0.08 rad` target movement per policy step.
+- Isaac training directly applies `action * action_scale + default_joint_pos` to the implicit actuator target every step; it does not impose this additional 4 rad/s command-target slew limit.
+- This mismatch explains the native MuJoCo symptom where low speeds worked but the robot could not open its stride around normalized `vx=0.5`.
+
+Deploy working tree changes:
+
+- `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/controller_cpp/include/controller_core.h`
+  - default `ControllerCoreOptions::max_target_rate`: `4.0 -> 25.0`
+- `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/controller_cpp/include/mujoco_sim_adapter.h`
+  - default `zero_head_target`: `true -> false`
+- `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/controller_cpp/src/dual_inference_rate.cpp`
+  - added `--max-target-rate`
+  - default `25`
+  - pure-sim core uses the parsed value
+  - local real-state-sim PD no longer zeros the head target
+- `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/controller_cpp/src/magicbot_z1_loco_onnx.cpp`
+  - default `--max-target-rate`: `25`
+  - usage text documents the default
+
+Validation:
+
+- `git diff --check` passed for the touched deploy C++ files.
+- `scripts/run_magicbot_loco_native.sh --config <snapshot LocoMode.yaml> --dry-run --skip-network-check`
+  - builds `magicbot_z1_loco_onnx`
+  - ONNX input/output: `82 -> 24`
+  - dry-run target sample range: `[-0.327..0.801]`
+- `scripts/run_mujoco_loco_viewer_native.sh --help`
+  - builds `mujoco_loco_viewer`
+- Native dual smoke, Stage2A `23425`, default `max_target_rate=25`:
+  - command: normalized `vx=0.5` (about `2.125 m/s`)
+  - `min_base_height=0.688170`
+  - `max_gravity_xy=0.134253`
+  - `max_root_xy_drift=6.829144`
+  - `max_policy_target_jump=0.905066`
+  - result: stable over 5s pure-sim
+- Native dual smoke, Stage2A `23425`, explicit `max_target_rate=25`:
+  - normalized `vx=0.75` (about `3.1875 m/s`): `min_base_height=0.670252`, `max_gravity_xy=0.168753`
+  - normalized `vx=1.0` (about `4.25 m/s`): `min_base_height=0.661294`, `max_gravity_xy=0.149003`
+  - result: both remain upright over 5s pure-sim
+
+Comparison to old default:
+
+- old `max_target_rate=4`, normalized `vx=0.5`:
+  - `min_base_height=0.086692`
+  - `max_gravity_xy=1.000000`
+  - result: falls in MuJoCo
+
+Conclusion:
+
+- The native MuJoCo high-speed failure was primarily caused by deploy-side target slew limiting, not action order.
+- The head-target fix is still correct for 24-action policy consistency, but it was not the main fall cause.
+- Keep `max_target_rate=25` as the deployment default for Stage2A sprint policies unless real-robot safety testing requires a lower value.
+- Deploy repo has a dirty working tree with unrelated changes, so this fix is verified locally but not committed from this goal turn.
