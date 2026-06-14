@@ -3180,3 +3180,125 @@ PYTHONPATH=/home/hiyio/LeggedLab \
   - `num_envs=2048` if other training/play processes are active, or `4096` if GPU is free
   - `max_iterations=26` to get only the next checkpoint before evaluation
   - evaluate fixed speeds `3.5 4.0 4.25 4.5` and profile `3.0 -> 4.5 -> 3.0`
+
+Stage2I formal run and validation:
+
+- Context:
+  - Stage2H GUI play and a rough dog training run were active, so the formal Stage2I run used `1024 envs` to avoid OOM and avoid disrupting the play session too much.
+  - Stage2F `model_23550.pt` remains protected and unchanged.
+- Formal command:
+
+```bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2i_hightrack \
+  --num_envs 1024 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431 \
+  --checkpoint model_23550.pt \
+  --max_iterations 26 \
+  --run_name z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010 \
+  --logger tensorboard \
+  --deploy_yaml_root /home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010
+```
+
+Run artifacts:
+
+- stdout log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010.out`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_22-10-27_z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010`
+- deploy snapshot:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010/policies/loco_mode/config/LocoMode.yaml`
+- checkpoints:
+  - `model_23550.pt`
+  - `model_23575.pt`
+- fixed-speed eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_22-10-27_z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010/eval_fixed_speed_23575_env128_3p5_4p5.txt`
+- command-profile eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_22-10-27_z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010/eval_command_profile_23575_3p0_4p5_3p0_env16.txt`
+
+Final online indicators at `model_23575.pt`:
+
+- mean reward: `6.16`
+- mean episode length: `562.28`
+- timeout ratio: `1.0000`
+- head/shoulder contact ratio: `0.0000`
+- body contact ratio: `0.0`
+- speed tracking failure ratio: `0.0000`
+- track linear velocity reward contribution: `0.8284`
+- forward speed progress reward contribution: `0.1161`
+
+Fixed-speed eval, strict conditions (`num_envs=128`, `duration=8`, `warmup=3`):
+
+| checkpoint | target | mean vx | abs err | p50 vx | p90 abs vx | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2F 23550 | 3.50 | 3.4686 | 0.1545 | - | - | 3 | 2 | 1 |
+| Stage2H 23575 | 3.50 | 3.5110 | 0.1454 | 3.5280 | 3.7305 | 5 | 4 | 1 |
+| Stage2I 23575 | 3.50 | 3.5640 | 0.2056 | 3.6099 | 3.8235 | 4 | 3 | 1 |
+| Stage2F 23550 | 4.00 | 3.6600 | 0.3730 | - | - | 10 | 4 | 6 |
+| Stage2H 23575 | 4.00 | 3.6093 | 0.4329 | 3.8296 | 4.0894 | 14 | 4 | 10 |
+| Stage2I 23575 | 4.00 | 3.7580 | 0.3533 | 3.9364 | 4.2044 | 9 | 4 | 5 |
+| Stage2F 23550 | 4.25 | 3.4479 | 0.8131 | - | - | 29 | 8 | 21 |
+| Stage2H 23575 | 4.25 | 3.5673 | 0.7008 | 3.9452 | 4.2525 | 25 | 8 | 17 |
+| Stage2I 23575 | 4.25 | 3.6549 | 0.6404 | 4.0186 | 4.3445 | 15 | 2 | 13 |
+| Stage2F 23550 | 4.50 | 2.9308 | 1.5704 | 3.7212 | 4.2650 | 56 | 9 | 47 |
+| Stage2H 23575 | 4.50 | 2.8996 | 1.6029 | 3.7953 | 4.3374 | 78 | 18 | 60 |
+| Stage2I 23575 | 4.50 | 3.0259 | 1.4851 | 3.9272 | 4.4296 | 35 | 5 | 30 |
+
+Command-profile eval (`3.0 -> 4.5 -> 3.0`, `16 envs`, warmup `1s @ 3.0`):
+
+| checkpoint | segment target | mean vx | first 1s vx | last 1s vx | abs err | p90 abs vx | mean tilt xy | p90 tilt xy | resets |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2F 23550 | 4.50 | 3.7443 | 3.3098 | 4.0103 | 0.7557 | 4.1564 | 0.0467 | 0.0773 | 0 |
+| Stage2H 23575 | 4.50 | 3.8389 | 3.3752 | 4.1076 | 0.6612 | 4.2552 | 0.0477 | 0.0786 | 0 |
+| Stage2I 23575 | 4.50 | 3.8774 | 3.4299 | 4.1484 | 0.6231 | 4.2958 | 0.0525 | 0.0857 | 0 |
+
+Stage2I profile details:
+
+| segment | target | duration | mean vx | first 1s vx | last 1s vx | abs err | p90 abs vx | mean tilt xy | p90 tilt xy | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 3.00 | 3.0 | 2.7702 | 2.2517 | 3.1487 | 0.4311 | 3.2801 | 0.0586 | 0.1274 | 0 | 0 | 0 |
+| 1 | 4.50 | 4.0 | 3.8774 | 3.4299 | 4.1484 | 0.6231 | 4.2958 | 0.0525 | 0.0857 | 0 | 0 | 0 |
+| 2 | 3.00 | 3.0 | 3.3652 | 3.6694 | 3.1936 | 0.3688 | 3.8750 | 0.0370 | 0.0623 | 0 | 0 | 0 |
+
+Stage2I interpretation:
+
+- Stage2I is a useful high-speed stabilization checkpoint.
+- It is the best metrics checkpoint so far for fixed `4.0-4.5 m/s`:
+  - fixed `4.0`: resets `10/14 -> 9`, speed resets `6/10 -> 5`
+  - fixed `4.25`: resets `29/25 -> 15`, speed resets `21/17 -> 13`
+  - fixed `4.5`: resets `56/78 -> 35`, speed resets `47/60 -> 30`
+- It also improves the dynamic `4.5` profile segment:
+  - Stage2F last-second vx `4.0103`
+  - Stage2H last-second vx `4.1076`
+  - Stage2I last-second vx `4.1484`
+- Remaining limitation:
+  - fixed `4.5 m/s` is still not stable enough: `35/128` resets, mostly speed-tracking.
+  - 3.5 m/s tracking overshoots slightly and has slightly worse abs error than Stage2F.
+- Current ranking:
+  - primary human-accepted candidate for visual/deploy safety: Stage2F `model_23550.pt`
+  - best metric candidate for fixed high-speed stabilization: Stage2I `model_23575.pt`
+  - Stage2H is superseded by Stage2I on both fixed `4.5` reset count and dynamic `4.5` segment speed.
+
+Stage2I play/export validation:
+
+- Stage2H play was stopped to avoid two GUI simulations consuming resources.
+- Stage2I GUI play started successfully:
+  - PID: `2913`
+  - task: `magicbot_z1_flat_sprint_amp_stage2i_hightrack`
+  - checkpoint: `model_23575.pt`
+  - envs: `16`
+  - command range: `lin_vel_x=(3.5, 4.5)`, `lin_vel_y=0.0`, `ang_vel_z=0.0`
+  - velocity debug visualization: enabled
+  - stdout log:
+    `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2i_play_23575_cmdx3p5_4p5_env16_20260614_222245.out`
+- Exported policy artifacts:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_22-10-27_z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010/exported/policy.pt`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_22-10-27_z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010/exported/policy.onnx`
+- ONNX shape:
+  - input: `obs [1, 82]`
+  - output: `actions [1, 24]`
+- Human visual feedback is still pending; do not promote Stage2I above Stage2F for deployment until play is inspected.
