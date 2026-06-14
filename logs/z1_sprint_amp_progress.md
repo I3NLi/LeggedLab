@@ -1762,3 +1762,48 @@ Conclusion:
 - The Stage2A `23425` policy still fails in native MuJoCo around normalized `vx=0.5` (about `2.125 m/s`) even though Isaac fixed-speed eval is healthy at `2.5 m/s`.
 - Head target zeroing was a real deploy/MuJoCo inconsistency and has been fixed locally, but it is not the main high-speed MuJoCo failure.
 - Next investigation should prove the action/joint order against Isaac's runtime joint order, then compare MuJoCo XML/contact/inertia with the Isaac training asset.
+
+## Action Order Check: Stage2A Z1
+
+Date: `2026-06-14`
+
+Query:
+
+- created a 1-env headless Isaac task: `magicbot_z1_flat_sprint_amp_stage2a`
+- output file: `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2a_isaac_joint_order_names_20260614_1852.txt`
+
+Isaac runtime joint/action order:
+
+```text
+0: left_hip_pitch_joint
+1: right_hip_pitch_joint
+2: waist_yaw_joint
+3: left_hip_roll_joint
+4: right_hip_roll_joint
+5: head_joint
+6: left_shoulder_pitch_joint
+7: right_shoulder_pitch_joint
+8: left_hip_yaw_joint
+9: right_hip_yaw_joint
+10: left_shoulder_roll_joint
+11: right_shoulder_roll_joint
+12: left_knee_joint
+13: right_knee_joint
+14: left_shoulder_yaw_joint
+15: right_shoulder_yaw_joint
+16: left_ankle_pitch_joint
+17: right_ankle_pitch_joint
+18: left_elbow_joint
+19: right_elbow_joint
+20: left_ankle_roll_joint
+21: right_ankle_roll_joint
+22: left_wrist_yaw_joint
+23: right_wrist_yaw_joint
+```
+
+Conclusion:
+
+- Isaac runtime order matches `legged_lab/utils/magicbot_deploy_yaml.py::LAB_JOINT_NAMES`.
+- Deploy YAML `joint2motor_idx` maps this Isaac/policy order into MuJoCo actuator order.
+- Action/joint order is therefore not the likely cause of the Stage2A native MuJoCo high-speed fall.
+- Next likely mismatch class: MuJoCo XML/contact/inertia/solver behavior versus the Isaac training asset, especially feet/contact and shoulder axis reorientation warnings.
