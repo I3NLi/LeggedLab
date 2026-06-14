@@ -1647,3 +1647,45 @@ Gait conclusion:
   - high-speed candidate: `model_23425.pt`
   - smoother mid-speed backup: `model_23500.pt`
 - Next action: play `model_23425.pt` with command range `-2.5..4.25` before considering it deployable.
+
+## Play Check: Stage2A 23425
+
+Date: `2026-06-14`
+
+Command summary:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2a`
+- checkpoint: `model_23425.pt`
+- envs: `50`
+- command range: `lin_vel_x=(-2.5, 4.25)`, `lin_vel_y=0.0`, `ang_vel_z=0.0`
+- velocity debug visualization: enabled
+
+Status:
+
+- PID: `1364645`
+- log: `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage2a_23425_cmdx-2p5_4p25_20260614_1806.out`
+- command range confirmed in log.
+- actor observation dim confirmed: `82`
+- critic observation dim confirmed: `87`
+- exported artifacts:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_17-37-04_z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614/exported/policy.pt`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_17-37-04_z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614/exported/policy.onnx`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_17-37-04_z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614/exported/policy.onnx.data`
+
+Window capture:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage2a_23425_window_20260614_1808.png`
+- xwd source:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage2a_23425_window_20260614_1808.xwd`
+
+Visual note:
+
+- The play window is live and no obvious fallen robot is visible in the captured frame.
+- The captured camera view is too close and partly blocked by the simulation settings panel, so this should be treated only as a weak sanity check.
+- Do not sync Stage2A `23425` into the deploy repo until a better visual pass confirms start, acceleration, hold, and deceleration behavior.
+
+To stop this play:
+
+```bash
+kill 1364645
+```
