@@ -3075,3 +3075,108 @@ Stage2H play/export validation:
   - input: `obs [1, 82]`
   - output: `actions [1, 24]`
 - Human visual feedback is still pending; do not deploy Stage2H until the running play is inspected.
+
+Stage2I high-track stabilization design:
+
+- Task:
+  `magicbot_z1_flat_sprint_amp_stage2i_hightrack`
+- Purpose:
+  stabilize fixed `4.0-4.5 m/s` behavior and reduce speed-tracking resets, without widening beyond Stage2H.
+- Start checkpoint for future formal training:
+  Stage2F `model_23550.pt`
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/model_23550.pt`
+- Rationale for starting from Stage2F:
+  - Stage2F is still the primary human-accepted candidate.
+  - Stage2H only improves dynamic `4.5 m/s` slightly, but fixed `4.5 m/s` reset count is worse.
+  - Stage2I therefore uses the Stage2F posture/safety base and focuses the command distribution on higher speeds.
+- Changes versus Stage2F:
+  - `lin_vel_x=(3.5, 4.5)`
+  - `lin_vel_y=(-0.08, 0.08)`
+  - `ang_vel_z=(-0.18, 0.18)`
+  - `reference_motion.min_command_speed=3.5`
+  - `reference_motion.max_reference_speed=5.1`
+  - `reference_motion.speed_match_tolerance=0.65`
+  - `track_lin_vel_xy_exp.weight=1.70`
+  - `track_lin_vel_xy_exp.std=1.0`
+  - `forward_speed_progress.weight=0.24`
+  - `forward_speed_progress.min_command_x=3.5`
+  - `energy.weight=-0.0006`
+  - `action_rate_l2.weight=-0.0075`
+  - `learning_rate=0.00004`
+  - `motion_prior.reward_min_command_speed=3.5`
+- Unchanged safety constraints:
+  - `speed_tracking_duration_s=2.5`
+  - `speed_tracking_abs_error_threshold=0.5`
+  - `speed_tracking_rel_error_threshold=0.35`
+  - `head_shoulder_contact_termination_penalty.weight=-240.0`
+  - `body_orientation_l2.weight=-2.5`
+  - `flat_orientation_l2.weight=-1.2`
+  - `motion_prior.reward_coef=0.08`
+- Reasoning:
+  - At fixed `4.5 m/s`, the speed-tracking reset threshold is about `1.575 m/s`; policies averaging around `2.9 m/s` will reset after `2.5s`.
+  - The reward changes increase the usable tracking gradient at high error, reduce the pure progress shortcut, and reduce energy/action penalties enough to let the policy spend more effort chasing speed.
+  - The termination rule is intentionally not relaxed, because Stage2I should learn to satisfy the same deploy-relevant speed criterion.
+
+Stage2I config validation:
+
+- `py_compile` passed:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- AppLauncher registry check passed:
+  - registered: `True`
+  - run name:
+    `z1_sprint_amp_stage2i_hightrack_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_energy6e-4_lr4e-5`
+  - `lin_vel_x=(3.5, 4.5)`
+  - `lin_vel_y=(-0.08, 0.08)`
+  - `ang_vel_z=(-0.18, 0.18)`
+  - speed tracking thresholds: duration `2.5`, abs `0.5`, rel `0.35`
+  - reference min/max/tolerance: `3.5 / 5.1 / 0.65`
+  - track velocity reward: weight `1.7`, std `1.0`
+  - progress reward: weight `0.24`, min command x `3.5`
+  - energy/action-rate weights: `-0.0006 / -0.0075`
+  - AMP enabled: `True`, coef `0.08`, min speed `3.5`
+  - learning rate: `4e-05`
+  - save interval: `25`
+
+Stage2I smoke startup:
+
+- Final smoke command:
+
+```bash
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2i_hightrack \
+  --num_envs 32 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431 \
+  --checkpoint model_23550.pt \
+  --max_iterations 1 \
+  --run_name z1_sprint_amp_stage2i_hightrack_smoke_fromstage2f23550_env32_20260614_220632 \
+  --logger tensorboard \
+  --skip_deploy_yaml
+```
+
+- stdout log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2i_hightrack_smoke_fromstage2f23550_env32_20260614_220632.out`
+- smoke directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_22-06-45_z1_sprint_amp_stage2i_hightrack_smoke_fromstage2f23550_env32_20260614_220632`
+- smoke artifacts:
+  - `params/env.yaml`
+  - `params/agent.yaml`
+  - tensorboard event file
+  - loaded start checkpoint copy `model_23550.pt`
+- Smoke params confirmed:
+  - `lin_vel_x=(3.5, 4.5)`
+  - `lin_vel_y=(-0.08, 0.08)`
+  - `ang_vel_z=(-0.18, 0.18)`
+  - `track_lin_vel_xy_exp.weight=1.7`
+  - `track_lin_vel_xy_exp.std=1.0`
+  - `forward_speed_progress.weight=0.24`
+  - `forward_speed_progress.min_command_x=3.5`
+- Formal Stage2I training has not started yet because Stage2H visual play is still running for inspection.
+- Recommended formal run when ready:
+  - start from Stage2F `model_23550.pt`
+  - `num_envs=2048` if other training/play processes are active, or `4096` if GPU is free
+  - `max_iterations=26` to get only the next checkpoint before evaluation
+  - evaluate fixed speeds `3.5 4.0 4.25 4.5` and profile `3.0 -> 4.5 -> 3.0`
