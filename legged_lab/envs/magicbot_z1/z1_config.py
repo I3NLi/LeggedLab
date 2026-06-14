@@ -541,6 +541,17 @@ class MagicBotZ1FlatSprintAMPStage2LStabilityAnchorEnvCfg(MagicBotZ1FlatSprintAM
 
 
 @configclass
+class MagicBotZ1FlatSprintAMPStage2MHeadGuardEnvCfg(MagicBotZ1FlatSprintAMPStage2LStabilityAnchorEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.reward.head_shoulder_contact_termination_penalty.weight = -320.0
+        self.reward.ang_vel_xy_l2.weight = -0.10
+        self.reward.body_orientation_l2.weight = -2.8
+        self.reward.flat_orientation_l2.weight = -1.35
+        self.reward.action_rate_l2.weight = -8.5e-3
+
+
+@configclass
 class MagicBotZ1FlatAgentCfg(G1FlatAgentCfg):
     experiment_name: str = "magicbot_z1_flat"
     wandb_project: str = "magicbot_z1_flat"
@@ -738,6 +749,21 @@ class MagicBotZ1FlatSprintAMPStage2LStabilityAnchorAgentCfg(MagicBotZ1FlatSprint
     def __post_init__(self):
         super().__post_init__()
         self.algorithm.learning_rate = 2.0e-5
+        self.motion_prior.reward_coef = 0.08
+        self.motion_prior.reward_min_command_speed = 3.4
+        self.save_interval = 25
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage2MHeadGuardAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = (
+        "z1_sprint_amp_stage2m_headguard_cmdx3p4_4p55_"
+        "headpen320_angxy0p10_body2p8_flat1p35_lr1p5e-5"
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.learning_rate = 1.5e-5
         self.motion_prior.reward_coef = 0.08
         self.motion_prior.reward_min_command_speed = 3.4
         self.save_interval = 25

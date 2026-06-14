@@ -3839,3 +3839,51 @@ Stage2L play/export validation:
 - exported artifacts:
   - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-25-33_z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517/exported/policy.pt`
   - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-25-33_z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517/exported/policy.onnx`
+
+## Stage2M: head/shoulder contact guard
+
+Purpose:
+
+- Build from Stage2L `model_23675.pt`.
+- Preserve Stage2L's speed-tracking gains at `4.0-4.5 m/s`.
+- Reduce head/shoulder contact, which became the main limiting reset reason in Stage2L eval.
+- Do not widen speed or turning commands; this is a safety/posture consolidation step.
+
+Config changes:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2m_headguard`
+- base: `MagicBotZ1FlatSprintAMPStage2LStabilityAnchorEnvCfg`
+- command range unchanged from Stage2L:
+  - `lin_vel_x=(3.4, 4.55)`
+  - `lin_vel_y=(-0.18, 0.18)`
+  - `ang_vel_z=(-0.32, 0.32)`
+- reward tuning:
+  - `head_shoulder_contact_termination_penalty.weight=-320.0`
+  - `ang_vel_xy_l2.weight=-0.10`
+  - `body_orientation_l2.weight=-2.8`
+  - `flat_orientation_l2.weight=-1.35`
+  - `action_rate_l2.weight=-8.5e-3`
+- retained speed/AMP settings:
+  - `track_lin_vel_xy_exp.weight=1.85`
+  - `track_lin_vel_xy_exp.std=1.05`
+  - `track_ang_vel_z_exp.weight=1.20`
+  - `track_ang_vel_z_exp.std=0.60`
+  - `forward_speed_progress.weight=0.26`
+  - `reference_motion.min_command_speed=3.4`
+  - `reference_motion.max_reference_speed=5.2`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.4`
+- retained safety:
+  - `speed_tracking_duration_s=2.5`
+- agent:
+  - `learning_rate=1.5e-5`
+  - `save_interval=25`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- registry check passed:
+  - task resolves as `magicbot_z1_flat_sprint_amp_stage2m_headguard`
+  - command range, AMP gate, speed-tracking duration, and head-guard reward weights match the intended Stage2M settings.
