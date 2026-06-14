@@ -2085,3 +2085,158 @@ Conclusion:
   - avoid immediate `4.75` command max;
   - likely use `4.5` or keep `4.25` while changing sampling/curriculum;
   - avoid increasing velocity tracking pressure further until the model can start and hold `4.0+` in fixed-speed eval.
+
+## Stage2C Forward-Focus Sprint AMP
+
+Date: `2026-06-14`
+
+Reason:
+
+- Stage2B showed that directly expanding full command range to `4.75 m/s` can preserve online timeout ratio while degrading fixed-speed high-speed tracking.
+- Stage2C-forward keeps the Stage2A speed ceiling but increases the density of forward sprint commands and reduces lateral/yaw distractions.
+- This is an intermediate sprint-skill absorption stage, not the final all-direction deploy command distribution.
+
+Config:
+
+- New task: `magicbot_z1_flat_sprint_amp_stage2c_forward`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_17-37-04_z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614/model_23425.pt`
+- `lin_vel_x`: `(0.0, 4.25)`
+- `lin_vel_y`: `(-0.2, 0.2)`
+- `ang_vel_z`: `(-0.4, 0.4)`
+- heading command: `False`
+- standing env ratio: `0.05`
+- heading env ratio: `0.0`
+- `reference_motion.max_reference_speed`: `4.8`
+- `track_lin_vel_xy_exp.weight`: `1.35`
+- AMP reward coefficient: `0.08`
+- learning rate: `3.0e-4`
+- save interval: `25`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- AppLauncher registry check passed:
+  - task registered: `magicbot_z1_flat_sprint_amp_stage2c_forward`
+  - `lin_vel_x=(0.0, 4.25)`
+  - `lin_vel_y=(-0.2, 0.2)`
+  - `ang_vel_z=(-0.4, 0.4)`
+  - `heading_command=False`
+  - `rel_standing_envs=0.05`
+  - `rel_heading_envs=0.0`
+  - `motion_prior_enable=True`
+  - `motion_prior_reward_coef=0.08`
+- Smoke training passed:
+  - envs: `64`
+  - max iterations: `1`
+  - loaded Stage2A `model_23425.pt`
+  - actor shape: `82 -> 24`
+  - critic shape: `87 -> 1`
+  - AMP runner: enabled
+
+Formal run:
+
+```bash
+OMNI_KIT_ACCEPT_EULA=YES \
+PYTHONNOUSERSITE=1 \
+PYTHONPATH=/home/hiyio/LeggedLab \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python -u legged_lab/scripts/train.py \
+  --task=magicbot_z1_flat_sprint_amp_stage2c_forward \
+  --num_envs=4096 \
+  --max_iterations=51 \
+  --run_name=z1_sprint_amp_stage2c_forward_from23425_cmdx0_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env4096_20260614_192309 \
+  --logger=tensorboard \
+  --resume=True \
+  --load_run=2026-06-14_17-37-04_z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614 \
+  --checkpoint=model_23425.pt \
+  --headless \
+  --deploy_yaml_root=/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2c_forward_from23425_cmdx0_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env4096_20260614_192309 \
+  --device=cuda:0 \
+  --kit_args=--portable
+```
+
+Run artifacts:
+
+- PID at launch: `2271604`
+- stdout log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2c_forward_from23425_cmdx0_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env4096_20260614_192309.out`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_19-23-39_z1_sprint_amp_stage2c_forward_from23425_cmdx0_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env4096_20260614_192309`
+- deploy snapshot:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2c_forward_from23425_cmdx0_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env4096_20260614_192309/policies/loco_mode/config/LocoMode.yaml`
+- checkpoints:
+  - `model_23425.pt`
+  - `model_23450.pt`
+  - `model_23475.pt`
+
+Final online indicators at `model_23475.pt`:
+
+- mean reward: `1.99`
+- mean episode length: `960.27`
+- timeout ratio: `0.9396`
+- head/shoulder contact ratio: `0.0604`
+- body contact ratio: `0.0`
+- speed tracking failure ratio: `0.0`
+
+Fixed-speed eval settings:
+
+- num envs: `64`
+- warmup: `2 s`
+- measured duration: `6 s`
+- noise disabled, push disabled, heading/y velocity/yaw fixed to zero.
+
+Stage2C-forward `model_23450.pt`:
+
+- eval log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2c_forward_23450_fixed_speed_eval_20260614_1931.out`
+
+| target | mean vx | abs err | resets |
+| --- | ---: | ---: | ---: |
+| 2.50 | 2.4594 | 0.1195 | 1 |
+| 3.00 | 2.7206 | 0.3558 | 2 |
+| 3.50 | 2.6384 | 0.9139 | 8 |
+| 4.00 | 2.0925 | 1.9213 | 16 |
+| 4.25 | 2.0727 | 2.1822 | 17 |
+| 4.50 | 1.1140 | 3.3870 | 38 |
+
+Stage2C-forward `model_23475.pt`:
+
+- eval log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2c_forward_23475_fixed_speed_eval_20260614_1928.out`
+
+| target | mean vx | abs err | resets |
+| --- | ---: | ---: | ---: |
+| 2.50 | 2.4716 | 0.1108 | 0 |
+| 3.00 | 2.7857 | 0.3179 | 2 |
+| 3.50 | 3.0088 | 0.5859 | 6 |
+| 4.00 | 2.6205 | 1.4136 | 15 |
+| 4.25 | 1.8930 | 2.3707 | 35 |
+| 4.50 | 0.9488 | 3.5520 | 52 |
+
+Gait eval for Stage2C-forward `model_23475.pt`:
+
+- eval log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2c_forward_23475_gait_eval_20260614_1933.out`
+
+| target | mean vx | abs err | resets | tilt xy | p90 swing foot z | single stance | double stance | flight | contact transitions/env/s | arm abs offset |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 3.50 | 2.9235 | 0.6502 | 4 | 0.0616 | 0.2840 | 0.8588 | 0.0244 | 0.1169 | 7.4531 | 0.3139 |
+| 4.00 | 2.3005 | 1.7156 | 10 | 0.0752 | 0.2805 | 0.8166 | 0.0736 | 0.1098 | 7.1198 | 0.3109 |
+
+Conclusion:
+
+- Stage2C-forward is more useful than Stage2B:
+  - `model_23475.pt` improves `3.5 m/s` and slightly improves `4.0 m/s` fixed-speed tracking relative to the Stage2A `23425` same-parameter eval.
+  - gait quality at `3.5 m/s` shows active swing (`p90_swing_foot_z=0.2840`) and mostly single-stance running/walking rhythm.
+- It is not yet a real `4.25+ m/s` solution:
+  - `model_23475.pt` degrades at `4.25 m/s`;
+  - `model_23450.pt` has fewer `4.25 m/s` resets but does not improve mean speed.
+- Current best continuation choices:
+  - for `3.5-4.0 m/s` forward sprint style: Stage2C-forward `model_23475.pt`
+  - for broader command retention and original deploy behavior: Stage2A `model_23425.pt`
+- Next attempt should combine the two:
+  - continue from Stage2C-forward `23475` for a very short run only if validating `4.0` style;
+  - or restart from Stage2A `23425` with forward-focus but add a gentler high-speed curriculum instead of immediately evaluating/forcing `4.25+`.
