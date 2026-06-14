@@ -3559,3 +3559,47 @@ Validation:
 - registry check passed:
   - task resolves as `magicbot_z1_flat_sprint_amp_stage2k_mixedretention`
   - command ranges, reward weights, AMP gate, and `speed_tracking_duration_s=2.5` match the intended Stage2K settings.
+
+Formal Stage2K run:
+
+- unit:
+  `z1_stage2k_mixedretention_20260615_000941.service`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-09-58_z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941.out`
+- deploy yaml snapshot root:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947/model_23625.pt`
+- command:
+
+```bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2k_mixedretention \
+  --num_envs 1024 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947 \
+  --checkpoint model_23625.pt \
+  --max_iterations 51 \
+  --run_name z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941 \
+  --logger tensorboard \
+  --deploy_yaml_root /home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941
+```
+
+Early online indicators:
+
+| iteration | mean reward | mean episode length | track xy | progress | track yaw | timeout ratio | head/shoulder ratio | speed failure ratio |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 23626 | -3.16 | 24.93 | 0.0561 | 0.0000 | 0.0168 | 0.8042 | 0.1958 | 0.0000 |
+| 23629 | -0.42 | 73.55 | 0.1546 | 0.0048 | 0.0534 | 0.9583 | 0.0417 | 0.0000 |
+| 23632 | -3.13 | 133.07 | 0.2340 | 0.0228 | 0.0912 | 0.9722 | 0.0278 | 0.0000 |
+| 23635 | 3.62 | 220.54 | 0.3526 | 0.0439 | 0.1275 | 0.9931 | 0.0069 | 0.0000 |
+
+Early interpretation:
+
+- Stage2K caused a large initial distribution shock because it raised the x-speed floor and tightened x/y tracking compared with Stage2J.
+- The run is recovering by `23635`, but the first checkpoint must be evaluated before continuing blindly.
