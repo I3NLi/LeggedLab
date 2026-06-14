@@ -36,6 +36,24 @@ def track_lin_vel_xy_yaw_frame_exp(
     return torch.exp(-lin_vel_error / std**2)
 
 
+def forward_speed_progress(
+    env: BaseEnv,
+    min_command_x: float,
+    max_ratio: float = 1.0,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    root_quat_w = env._tensor(asset.data.root_quat_w)
+    root_lin_vel_w = env._tensor(asset.data.root_lin_vel_w)
+    vel_yaw = math_utils.quat_apply_inverse(
+        math_utils.yaw_quat(root_quat_w), root_lin_vel_w[:, :3]
+    )
+    command_x = env._command_tensor()[:, 0]
+    reward = vel_yaw[:, 0] / torch.clamp(command_x, min=1.0e-6)
+    reward = torch.clamp(reward, min=0.0, max=float(max_ratio))
+    return reward * (command_x >= float(min_command_x)).float()
+
+
 def track_ang_vel_z_world_exp(
     env: BaseEnv, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:

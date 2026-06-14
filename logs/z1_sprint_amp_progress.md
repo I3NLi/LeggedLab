@@ -2406,3 +2406,143 @@ Conclusion:
   - keep `speed_tracking_duration_s=2.5`;
   - do not continue Stage2D for many more iterations without checkpoint-by-checkpoint eval;
   - consider a short Stage2E with high-speed command distribution plus either stronger forward-speed reward shaping or command-slew/eval alignment, while preserving Stage2A `23425` and Stage2C/Stage2D candidates.
+
+## Stage2E Forward-Progress Sprint AMP
+
+Date: `2026-06-14`
+
+Reason:
+
+- Stage2D proved that the robot can stay upright at high-speed commands, but `4.0-4.25 m/s` failures were still dominated by speed-tracking termination.
+- The exponential velocity reward becomes weak when commanded speed is far above actual speed.
+- Stage2E adds a small non-saturating forward-progress term for high forward commands so the policy still gets a useful gradient while learning to open stride and accelerate.
+
+Code/config changes:
+
+- New reward function:
+  - `legged_lab/mdp/rewards.py::forward_speed_progress`
+  - reward is `yaw_frame_vx / command_x`, clamped to `[0, 1]`, active only for `command_x >= 3.0`.
+- New task: `magicbot_z1_flat_sprint_amp_stage2e_progress`
+- `lin_vel_x`: `(3.0, 4.25)`
+- `lin_vel_y`: `(-0.1, 0.1)`
+- `ang_vel_z`: `(-0.25, 0.25)`
+- standing env ratio: `0.0`
+- heading command: `False`
+- `reference_motion.min_command_speed`: `3.0`
+- `reference_motion.max_reference_speed`: `4.8`
+- `reference_motion.speed_match_tolerance`: `0.5`
+- `track_lin_vel_xy_exp.weight`: `1.35`
+- `track_lin_vel_xy_exp.std`: `0.75`
+- `forward_speed_progress.weight`: `0.35`
+- AMP reward coefficient: `0.08`
+- `motion_prior.reward_min_command_speed`: `3.0`
+- learning rate: `1.0e-4`
+- save interval: `25`
+
+Validation:
+
+- AppLauncher registry/config check passed:
+  - task registered: `magicbot_z1_flat_sprint_amp_stage2e_progress`
+  - `lin_vel_x=(3.0, 4.25)`
+  - `reference_motion=(min=3.0, max=4.8, tolerance=0.5)`
+  - `forward_speed_progress.weight=0.35`
+  - `motion_prior.enable=True`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.0`
+  - `learning_rate=0.0001`
+- Smoke training passed:
+  - envs: `64`
+  - max iterations: `1`
+  - start checkpoint: Stage2D `model_23500.pt`
+  - `env.yaml` contains `forward_speed_progress`
+  - actor shape remains `82 -> 24`
+  - critic shape remains `87 -> 1`
+
+Formal run:
+
+```bash
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2e_progress \
+  --num_envs 4096 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-14_19-41-25_z1_sprint_amp_stage2d_highref_fromstage2c23475_cmdx2p5_4p25_ref3p0_4p8_amp0p08_lr2e-4_save25_env4096_20260614_194056 \
+  --checkpoint model_23500.pt \
+  --max_iterations 26 \
+  --run_name z1_sprint_amp_stage2e_progress_fromstage2d23500_cmdx3p0_4p25_ref3p0_4p8_prog0p35_amp0p08_lr1e-4_save25_env4096_20260614_200940 \
+  --logger tensorboard \
+  --deploy_yaml_root /home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2e_progress_fromstage2d23500_cmdx3p0_4p25_ref3p0_4p8_prog0p35_amp0p08_lr1e-4_save25_env4096_20260614_200940
+```
+
+Run artifacts:
+
+- stdout log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2e_progress_fromstage2d23500_cmdx3p0_4p25_ref3p0_4p8_prog0p35_amp0p08_lr1e-4_save25_env4096_20260614_200940.out`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-10-09_z1_sprint_amp_stage2e_progress_fromstage2d23500_cmdx3p0_4p25_ref3p0_4p8_prog0p35_amp0p08_lr1e-4_save25_env4096_20260614_200940`
+- deploy snapshot:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2e_progress_fromstage2d23500_cmdx3p0_4p25_ref3p0_4p8_prog0p35_amp0p08_lr1e-4_save25_env4096_20260614_200940/policies/loco_mode/config/LocoMode.yaml`
+- checkpoints:
+  - `model_23500.pt`
+  - `model_23525.pt`
+- fixed-speed eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-10-09_z1_sprint_amp_stage2e_progress_fromstage2d23500_cmdx3p0_4p25_ref3p0_4p8_prog0p35_amp0p08_lr1e-4_save25_env4096_20260614_200940/eval_fixed_speed_23525_3p0_4p5.txt`
+- Stage2D same-condition comparison eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-10-09_z1_sprint_amp_stage2e_progress_fromstage2d23500_cmdx3p0_4p25_ref3p0_4p8_prog0p35_amp0p08_lr1e-4_save25_env4096_20260614_200940/eval_fixed_speed_stage2d23500_same_conditions.txt`
+- gait quality eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-10-09_z1_sprint_amp_stage2e_progress_fromstage2d23500_cmdx3p0_4p25_ref3p0_4p8_prog0p35_amp0p08_lr1e-4_save25_env4096_20260614_200940/eval_gait_quality_23525_3p5_4p25.txt`
+
+Final online indicators at `model_23525.pt`:
+
+- mean reward: `-0.22`
+- mean episode length: `602.29`
+- timeout ratio: `0.9260`
+- head/shoulder contact ratio: `0.0740`
+- body contact ratio: `0.0`
+- speed tracking failure ratio: `0.0`
+- forward speed progress reward contribution: `0.1673`
+- track linear velocity reward contribution: `0.5576`
+
+Fixed-speed eval, same conditions (`num_envs=64`, `duration=6`, `warmup=2`):
+
+| checkpoint | target | mean vx | abs err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2D 23500 | 3.00 | 2.9366 | 0.1840 | 2 | 1 | 1 |
+| Stage2E 23525 | 3.00 | 3.0239 | 0.1491 | 1 | 1 | 0 |
+| Stage2D 23500 | 3.50 | 3.1153 | 0.4768 | 4 | 1 | 3 |
+| Stage2E 23525 | 3.50 | 3.3725 | 0.2369 | 0 | 0 | 0 |
+| Stage2D 23500 | 4.00 | 2.6430 | 1.3853 | 16 | 1 | 15 |
+| Stage2E 23525 | 4.00 | 3.1852 | 0.8536 | 11 | 6 | 5 |
+| Stage2D 23500 | 4.25 | 1.9078 | 2.3492 | 37 | 10 | 27 |
+| Stage2E 23525 | 4.25 | 2.7182 | 1.5385 | 23 | 7 | 16 |
+| Stage2D 23500 | 4.50 | 1.1788 | 3.3219 | 51 | 6 | 45 |
+| Stage2E 23525 | 4.50 | 2.1016 | 2.3999 | 31 | 8 | 23 |
+
+Gait quality eval, Stage2E `model_23525.pt`:
+
+| target | mean vx | abs err | resets | tilt xy | p90 swing foot z | single stance | double stance | flight | contact transitions/env/s | arm abs offset | shoulder pitch abs offset |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 3.50 | 3.2107 | 0.3782 | 3 | 0.0500 | 0.2662 | 0.8645 | 0.0161 | 0.1194 | 7.6510 | 0.2660 | 0.2206 |
+| 4.00 | 3.1472 | 0.8722 | 6 | 0.0601 | 0.2669 | 0.8461 | 0.0232 | 0.1306 | 7.5990 | 0.2917 | 0.2588 |
+| 4.25 | 2.9352 | 1.3221 | 7 | 0.0682 | 0.2657 | 0.8329 | 0.0282 | 0.1389 | 7.5000 | 0.2955 | 0.2702 |
+
+Conclusion:
+
+- Stage2E `model_23525.pt` is a useful checkpoint.
+- The forward-progress reward improved actual high-speed tracking under the same evaluator:
+  - `4.00 m/s`: mean vx improved from `2.6430` to `3.1852`.
+  - `4.25 m/s`: mean vx improved from `1.9078` to `2.7182`.
+  - `4.50 m/s`: mean vx improved from `1.1788` to `2.1016`.
+- It also reduced speed-tracking resets:
+  - `4.00 m/s`: `15 -> 5`
+  - `4.25 m/s`: `27 -> 16`
+  - `4.50 m/s`: `45 -> 23`
+- Tradeoff:
+  - head/shoulder resets increased at `4.0 m/s` (`1 -> 6`), which means the policy is now more willing to accelerate but occasionally pitches into unsafe posture.
+  - `4.25+ m/s` is still not stable enough for deployment.
+- Next direction:
+  - preserve Stage2E `model_23525.pt` as the current high-speed candidate;
+  - do not keep pushing speed range wider yet;
+  - try a short Stage2F that keeps the Stage2E progress reward but adds posture/landing control at high commands, or slightly lowers progress weight while adding a high-speed torso pitch/height guard;
+  - continue using `speed_tracking_duration_s=2.5`.
