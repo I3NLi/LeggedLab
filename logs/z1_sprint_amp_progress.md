@@ -2683,3 +2683,26 @@ Conclusion:
   - run Isaac play/video before deploying Stage2F;
   - for Stage2G, keep speed range at `3.0-4.25` and focus on reducing the new `3.5 m/s` head/shoulder contacts while retaining Stage2F's `4.25/4.5` gains;
   - likely try an even smaller posture adjustment or a command-conditioned guard instead of increasing global orientation penalties further.
+
+Stage2F export/play validation:
+
+- Export-only command succeeded with Stage2F `model_23550.pt`.
+- Export artifacts:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/exported/policy.pt`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/exported/policy.onnx`
+- ONNX shape check:
+  - input: `obs [1, 82]`
+  - output: `actions [1, 24]`
+- Export log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/play_export_only_23550.txt`
+- Isaac visual play launched:
+  - PID at launch: `3148080`
+  - task: `magicbot_z1_flat_sprint_amp_stage2f_posture`
+  - checkpoint: `model_23550.pt`
+  - envs: `16`
+  - command range: `lin_vel_x=(3.0, 4.25)`, `lin_vel_y=0.0`, `ang_vel_z=0.0`
+  - velocity debug visualization: enabled
+  - stdout log:
+    `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2f_play_23550_cmdx3p0_4p25_env16_20260614_204622.out`
+- Visual acceptance is still pending human observation:
+  - specifically check whether the robot starts cleanly, avoids head/shoulder diving near `3.5 m/s`, and preserves the more aggressive `4.25 m/s` stride seen in fixed-speed/gait eval.
