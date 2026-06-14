@@ -1433,3 +1433,123 @@ PYTHONPATH=/home/hiyio/LeggedLab \
   --headless \
   --deploy_yaml_root=/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot
 ```
+
+## Stage1C Play Visual Snapshot
+
+Date: `2026-06-14`
+
+Window capture:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage1c_23400_window_20260614_1732.png`
+- xwd source:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage1c_23400_window_20260614_1732.xwd`
+
+Visual note:
+
+- No obvious falling robot in the captured frame.
+- Legs appear to be stepping rather than fully stuck.
+- Arms do not look like the previous clearly bad front-raised posture in this single-frame check.
+- This is only a sanity snapshot, not a full visual pass over start/accelerate/decelerate behavior.
+
+Stage1C play process was stopped after the snapshot to free GPU memory:
+
+```bash
+kill 789481
+```
+
+## Stage2A Smoke
+
+Date: `2026-06-14`
+
+Command summary:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2a`
+- envs: `4`
+- max iterations: `1`
+- resume checkpoint: Stage1C `model_23400.pt`
+- deploy yaml: skipped to avoid touching current deploy artifacts.
+
+Log:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2a_resume23400_smoke_20260614_1735.out`
+
+Run dir:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_17-34-53_z1_sprint_amp_stage2a_resume23400_smoke_20260614_1735`
+
+Validation:
+
+- exit status: `0`
+- AMP runner enabled: `True`
+- loaded checkpoint: `model_23400.pt`
+- actor observation dim: `82`
+- critic observation dim: `87`
+- action dim: `24`
+- saved config confirmed:
+  - `lin_vel_x: (-2.5, 4.25)`
+  - `max_reference_speed: 4.8`
+  - `track_lin_vel_xy_exp.weight: 1.35`
+  - `speed_tracking_duration_s: 2.5`
+  - `learning_rate: 0.0003`
+  - `motion_prior.reward_coef: 0.08`
+  - `save_interval: 25`
+
+## Stage2A Training Run
+
+Date: `2026-06-14`
+
+Run name:
+
+- `z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614`
+
+Launch log:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614.out`
+
+Run dir:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_17-37-04_z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614`
+
+Start checkpoint:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/model_23400.pt`
+
+Launch command summary:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2a`
+- envs: `10000`
+- max iterations: `101`
+- save interval: `25`
+- command `lin_vel_x`: `(-2.5, 4.25)`
+- AMP reward coefficient: `0.08`
+- learning rate: `3.0e-4`
+
+Deploy yaml handling:
+
+- To avoid overwriting the current usable Stage1C deploy config, the real deploy root was not used.
+- Deploy yaml root for this training run was redirected to:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614`
+- The run-local deploy directory should still be generated under the Stage2A log dir.
+
+Startup status:
+
+- PID: `990099`
+- checkpoint load confirmed: Stage1C `model_23400.pt`
+- AMP runner enabled: `True`
+- generated run-local deploy yaml:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_17-37-04_z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614/deploy/LocoMode_lowKp.yaml`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_17-37-04_z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614/deploy/LocoMode.yaml`
+- generated snapshot deploy yaml:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614/policies/loco_mode/config/LocoMode_lowKp.yaml`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614/policies/loco_mode/config/LocoMode.yaml`
+- global deploy YAML was not overwritten:
+  - `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/policies/loco_mode/config/LocoMode.yaml` hash stayed `c77307444621c178f1cc26a4fb469b6942709edb438a43f21e6e3e176ad7a12e`
+  - `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/policies/loco_mode/config/LocoMode_lowKp.yaml` hash stayed `c77307444621c178f1cc26a4fb469b6942709edb438a43f21e6e3e176ad7a12e`
+- first observed GPU state with DogUrdf17 play still running:
+  - total GPU memory used: about `20.9 / 32.6 GB`
+  - Z1 Stage2A process memory: about `9.1 GB`
+  - GPU utilization: about `85%`
+- early online note:
+  - iteration `23405-23406` had high speed tracking failure ratio around `0.16-0.18`.
+  - by iteration `23407`, speed tracking failure ratio dropped to `0.0240`, timeout ratio rose to `0.9555`, and mean reward recovered to `0.27`.
+  - continue monitoring until `model_23425.pt` before deciding whether the early failures are transient.
