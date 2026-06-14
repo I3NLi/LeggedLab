@@ -3603,3 +3603,68 @@ Early interpretation:
 
 - Stage2K caused a large initial distribution shock because it raised the x-speed floor and tightened x/y tracking compared with Stage2J.
 - The run is recovering by `23635`, but the first checkpoint must be evaluated before continuing blindly.
+
+Stage2K first checkpoint:
+
+- training was stopped at the first new checkpoint to avoid blindly continuing after the initial distribution shock.
+- checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-09-58_z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941/model_23650.pt`
+- final observed online line before stopping:
+  - iteration: `23650/23676`
+  - mean reward: `9.79`
+  - mean episode length: `563.00`
+  - `track_lin_vel_xy_exp`: `0.9747`
+  - `forward_speed_progress`: `0.1483`
+  - `track_ang_vel_z_exp`: `0.3146`
+  - timeout ratio: `1.0000`
+  - head/shoulder contact ratio: `0.0000`
+  - speed tracking failure ratio: `0.0000`
+- saved checkpoints:
+  - `model_23625.pt`
+  - `model_23650.pt`
+
+Stage2K eval artifacts:
+
+- straight eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-09-58_z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941/eval_fixed_speed_23650_env64_3p5_4p5.txt`
+- turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-09-58_z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941/eval_fixed_command_23650_vy0p20_wz0p35_env32.txt`
+
+Straight eval comparison (`vy=0.0`, `wz=0.0`, `duration=4`, `warmup=2`):
+
+| checkpoint | envs | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2J 23625 | 64 | 3.50 | 3.3586 | 0.2982 | 0.3504 | 0.5045 | 2 | 2 | 0 |
+| Stage2K 23650 | 64 | 3.50 | 3.5350 | 0.2608 | 0.3132 | 0.4425 | 0 | 0 | 0 |
+| Stage2J 23625 | 64 | 4.00 | 3.4656 | 0.5647 | 0.6051 | 1.4863 | 1 | 1 | 0 |
+| Stage2K 23650 | 64 | 4.00 | 3.3896 | 0.6785 | 0.7267 | 2.1301 | 5 | 4 | 1 |
+| Stage2J 23625 | 64 | 4.25 | 3.1747 | 1.0831 | 1.1130 | 3.2038 | 2 | 1 | 1 |
+| Stage2K 23650 | 64 | 4.25 | 3.3884 | 0.8895 | 0.9309 | 2.7273 | 3 | 2 | 1 |
+| Stage2K 23650 | 64 | 4.50 | 2.9410 | 1.5630 | 1.5931 | 4.2028 | 4 | 3 | 1 |
+
+Turning eval comparison (`vy=0.20`, `wz=0.35`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2J 23625 | 3.50 | 3.3805 | 0.1927 | 0.2585 | 0.2086 | 0.1234 | 0.3965 | 0.2646 | 0.4487 | 0 | 0 | 0 |
+| Stage2K 23650 | 3.50 | 3.5059 | 0.1896 | 0.2649 | 0.2043 | 0.1254 | 0.3834 | 0.2654 | 0.3995 | 1 | 1 | 0 |
+| Stage2J 23625 | 4.00 | 3.3288 | 0.1923 | 0.2573 | 0.6782 | 0.1610 | 0.4447 | 0.7176 | 1.7663 | 2 | 2 | 0 |
+| Stage2K 23650 | 4.00 | 3.5103 | 0.2029 | 0.2270 | 0.5273 | 0.1448 | 0.4309 | 0.5752 | 1.3413 | 2 | 2 | 0 |
+| Stage2J 23625 | 4.25 | 3.0793 | 0.1375 | 0.2419 | 1.1710 | 0.1933 | 0.4856 | 1.2017 | 2.8706 | 3 | 1 | 2 |
+| Stage2K 23650 | 4.25 | 3.3491 | 0.1725 | 0.2361 | 0.9067 | 0.1882 | 0.4946 | 0.9476 | 2.4999 | 2 | 2 | 0 |
+
+Stage2K checkpoint choice:
+
+- `model_23650.pt` is useful and should be retained.
+- It improves Stage2J's high-speed turning objective:
+  - `4.25 + vy0.20 + wz0.35`: mean vx `3.0793 -> 3.3491`
+  - speed-tracking resets `2 -> 0`
+  - `xy_abs_err 1.2017 -> 0.9476`
+- It partially improves straight high-speed retention at `3.5` and `4.25`, but not uniformly:
+  - straight `3.5`: better than Stage2J
+  - straight `4.0`: worse than Stage2J in this short eval, with more resets
+  - straight `4.25`: better than Stage2J
+  - straight `4.5`: still too weak
+- Current recommendation:
+  - keep Stage2K `model_23650.pt` as the best mixed turning/speed checkpoint so far.
+  - do not continue this exact Stage2K run blindly; next stage should either soften the `4.0` instability or use a curriculum/mixture that protects the straight `4.0` pocket while pushing `4.25+`.
