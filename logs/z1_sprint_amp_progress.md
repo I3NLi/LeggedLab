@@ -1869,4 +1869,13 @@ Conclusion:
 - The native MuJoCo high-speed failure was primarily caused by deploy-side target slew limiting, not action order.
 - The head-target fix is still correct for 24-action policy consistency, but it was not the main fall cause.
 - Keep `max_target_rate=25` as the deployment default for Stage2A sprint policies unless real-robot safety testing requires a lower value.
-- Deploy repo has a dirty working tree with unrelated changes, so this fix is verified locally but not committed from this goal turn.
+- Deploy repo still has a dirty working tree with unrelated changes, but the target-rate/head-target fix was isolated into a minimal commit and pushed:
+  - repo: `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot`
+  - branch: `refactor/controller-core-adapters`
+  - commit: `c49cce5 Fix Z1 sprint deploy target limiting`
+  - remote: `origin/refactor/controller-core-adapters`
+- Post-commit default-path smoke:
+  - command: Stage2A `23425`, normalized `vx=0.5`, default `max_target_rate=25`, `duration=3`
+  - summary json: `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2a_23425_dual_puresim_vx0p5_rate25default_3s_20260614_goal_continue.json`
+  - `min_base_height=0.688170`, `max_gravity_xy=0.134253`, `max_policy_target_jump=0.905066`
+  - result: stable over 3s pure-sim
