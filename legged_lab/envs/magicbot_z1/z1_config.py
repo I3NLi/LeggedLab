@@ -378,6 +378,15 @@ class MagicBotZ1FlatSprintAMPStage2AEnvCfg(MagicBotZ1FlatSprintAMPEnvCfg):
 
 
 @configclass
+class MagicBotZ1FlatSprintAMPStage2BEnvCfg(MagicBotZ1FlatSprintAMPEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.ranges.lin_vel_x = (-2.5, 4.75)
+        self.reference_motion.max_reference_speed = 5.2
+        self.reward.track_lin_vel_xy_exp.weight = 1.4
+
+
+@configclass
 class MagicBotZ1FlatAgentCfg(G1FlatAgentCfg):
     experiment_name: str = "magicbot_z1_flat"
     wandb_project: str = "magicbot_z1_flat"
@@ -430,6 +439,17 @@ class MagicBotZ1FlatSprintAMPStage1CAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
 @configclass
 class MagicBotZ1FlatSprintAMPStage2AAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
     run_name: str = "z1_sprint_amp_stage2a_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4"
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.learning_rate = 3.0e-4
+        self.motion_prior.reward_coef = 0.08
+        self.save_interval = 25
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage2BAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = "z1_sprint_amp_stage2b_cmdx-2p5_4p75_ref2p0_5p2_amp0p08_lr3e-4"
 
     def __post_init__(self):
         super().__post_init__()

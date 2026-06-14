@@ -1879,3 +1879,209 @@ Conclusion:
   - summary json: `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2a_23425_dual_puresim_vx0p5_rate25default_3s_20260614_goal_continue.json`
   - `min_base_height=0.688170`, `max_gravity_xy=0.134253`, `max_policy_target_jump=0.905066`
   - result: stable over 3s pure-sim
+
+## Stage2B Sprint AMP Launch
+
+Date: `2026-06-14`
+
+Purpose:
+
+- Continue from the best Stage2A high-speed checkpoint without touching the stable baseline.
+- Expand the positive speed command one conservative step beyond Stage2A, aiming to make `4.0-4.5 m/s` more reliable before attempting the later `5-6 m/s` stage.
+- Keep the change small enough that regressions can be attributed to speed-range pressure rather than a large reward or AMP change.
+
+Protected baseline:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-13_22-11-32_z1_flat_cmdslew2_1_2_alive0p02_speeddur2p5_cmdx-2p5_5_resume21600_env20000_20260613_220958/model_23000.pt`
+
+Start checkpoint:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_17-37-04_z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614/model_23425.pt`
+
+Config changes:
+
+- New task: `magicbot_z1_flat_sprint_amp_stage2b`
+- `lin_vel_x`: `(-2.5, 4.75)`
+- `reference_motion.max_reference_speed`: `5.2`
+- `track_lin_vel_xy_exp.weight`: `1.4`
+- `speed_tracking_duration_s`: unchanged at `2.5`
+- AMP reward coefficient: unchanged at `0.08`
+- learning rate: unchanged at `3.0e-4`
+- save interval: unchanged at `25`
+- reset joint randomization, fall recovery, push, friction/mass/domain randomization: unchanged from current Z1 sprint config.
+
+Validation before launch:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- AppLauncher registry check passed:
+  - task registered: `magicbot_z1_flat_sprint_amp_stage2b`
+  - `lin_vel_x=(-2.5, 4.75)`
+  - `max_reference_speed=5.2`
+  - `track_lin_vel_xy_exp.weight=1.4`
+  - `motion_prior_enable=True`
+  - `motion_prior_reward_coef=0.08`
+  - `learning_rate=0.0003`
+  - `save_interval=25`
+- Smoke training passed:
+  - task: `magicbot_z1_flat_sprint_amp_stage2b`
+  - envs: `64`
+  - max iterations: `1`
+  - loaded checkpoint: Stage2A `model_23425.pt`
+  - actor shape: `82 -> 24`
+  - critic shape: `87 -> 1`
+  - AMP runner: enabled
+
+Resource note:
+
+- A separate DogUrdf17 Isaac play process was already using about `9.6 GB` GPU memory.
+- Initial ordinary-background launch attempts did not stay alive under the current shell/tool session, so the formal run is launched with `setsid`.
+- Formal env count was reduced to `4096` to avoid interfering with the existing Isaac play process.
+
+Formal run:
+
+```bash
+OMNI_KIT_ACCEPT_EULA=YES \
+PYTHONNOUSERSITE=1 \
+PYTHONPATH=/home/hiyio/LeggedLab \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python -u legged_lab/scripts/train.py \
+  --task=magicbot_z1_flat_sprint_amp_stage2b \
+  --num_envs=4096 \
+  --max_iterations=126 \
+  --run_name=z1_sprint_amp_stage2b_from23425_cmdx-2p5_4p75_ref2p0_5p2_amp0p08_lr3e-4_save25_env4096_20260614_185305 \
+  --logger=tensorboard \
+  --resume=True \
+  --load_run=2026-06-14_17-37-04_z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614 \
+  --checkpoint=model_23425.pt \
+  --headless \
+  --deploy_yaml_root=/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2b_from23425_cmdx-2p5_4p75_ref2p0_5p2_amp0p08_lr3e-4_save25_env4096_20260614_185305 \
+  --device=cuda:0 \
+  --kit_args=--portable
+```
+
+Run artifacts:
+
+- PID at launch: `1928745`
+- stdout log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2b_from23425_cmdx-2p5_4p75_ref2p0_5p2_amp0p08_lr3e-4_save25_env4096_20260614_185305.out`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_18-53-36_z1_sprint_amp_stage2b_from23425_cmdx-2p5_4p75_ref2p0_5p2_amp0p08_lr3e-4_save25_env4096_20260614_185305`
+- deploy snapshot:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2b_from23425_cmdx-2p5_4p75_ref2p0_5p2_amp0p08_lr3e-4_save25_env4096_20260614_185305/policies/loco_mode/config/LocoMode.yaml`
+
+Initial online indicators:
+
+- Training loaded Stage2A `model_23425.pt`.
+- Generated MagicBot Z1 deploy YAML files in both the run directory and deploy snapshot.
+- `Learning iteration 23425/23551` started successfully.
+- First observed iterations:
+  - iteration `23425`: mean reward `-4.33`, mean episode length `18.43`, timeout ratio `0.7553`, head/shoulder ratio `0.2447`, speed failure ratio `0.0`
+  - iteration `23426`: mean reward `-22.68`, mean episode length `37.51`, timeout ratio `0.6845`, head/shoulder ratio `0.3155`, speed failure ratio `0.0`
+  - iteration `23427`: mean reward `-4.55`, mean episode length `60.09`, timeout ratio `0.8175`, head/shoulder ratio `0.1721`, speed failure ratio `0.0`
+
+Next checks:
+
+- Watch whether episode length recovers toward Stage2A levels after the first high-speed adaptation window.
+- First useful checkpoint is expected at `model_23450.pt`.
+- Evaluate fixed speeds after at least `model_23450.pt` and compare against Stage2A `model_23425.pt` at `3.5`, `4.0`, `4.25`, and `4.5 m/s`.
+
+## Stage2B Sprint AMP Evaluation
+
+Date: `2026-06-14`
+
+Formal run:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_18-53-36_z1_sprint_amp_stage2b_from23425_cmdx-2p5_4p75_ref2p0_5p2_amp0p08_lr3e-4_save25_env4096_20260614_185305`
+
+Final online training indicators at `model_23550.pt`:
+
+- mean reward: `7.92`
+- mean episode length: `973.95`
+- timeout ratio: `0.9193`
+- head/shoulder contact ratio: `0.0122`
+- body contact ratio: `0.0`
+- speed tracking failure ratio: `0.0685`
+
+Important finding:
+
+- Online episode length and timeout ratio recovered, but fixed-speed evaluation shows high-speed command following degraded after further Stage2B training.
+- Therefore the final checkpoint `model_23550.pt` is not a good sprint continuation point.
+
+Fixed-speed eval settings:
+
+- num envs: `64`
+- warmup: `2 s`
+- measured duration: `6 s`
+- noise disabled, push disabled, heading/y velocity/yaw fixed to zero.
+
+Reference Stage2A baseline, original task/checkpoint:
+
+- checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_17-37-04_z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614/model_23425.pt`
+- eval log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2a_23425_fixed_speed_eval_sameparams_20260614_1914.out`
+
+| target | mean vx | abs err | resets |
+| --- | ---: | ---: | ---: |
+| 2.50 | 2.4701 | 0.1101 | 0 |
+| 3.00 | 2.8227 | 0.2499 | 7 |
+| 3.50 | 2.4723 | 1.0666 | 10 |
+| 4.00 | 2.5841 | 1.4287 | 17 |
+| 4.25 | 2.1426 | 2.1110 | 23 |
+| 4.50 | 1.2854 | 3.2149 | 40 |
+| 4.75 | 0.4092 | 4.3409 | 56 |
+
+Stage2B `model_23450.pt`:
+
+- eval log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2b_23450_fixed_speed_eval_20260614_1906.out`
+
+| target | mean vx | abs err | resets |
+| --- | ---: | ---: | ---: |
+| 2.50 | 2.4943 | 0.1339 | 2 |
+| 3.00 | 2.8504 | 0.2728 | 2 |
+| 3.50 | 3.0137 | 0.5578 | 5 |
+| 4.00 | 2.2022 | 1.8038 | 23 |
+| 4.25 | 2.0116 | 2.2415 | 35 |
+| 4.50 | 1.1680 | 3.3324 | 46 |
+| 4.75 | 0.8478 | 3.9022 | 52 |
+
+Stage2B `model_23475.pt`:
+
+- eval log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2b_23475_fixed_speed_eval_20260614_1917.out`
+
+| target | mean vx | abs err | resets |
+| --- | ---: | ---: | ---: |
+| 3.50 | 2.7487 | 0.7782 | 7 |
+| 4.00 | 1.9361 | 2.0689 | 22 |
+| 4.25 | 1.6189 | 2.6357 | 34 |
+| 4.50 | 1.3112 | 3.1893 | 42 |
+
+Stage2B `model_23550.pt`:
+
+- eval log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2b_23550_fixed_speed_eval_20260614_1901.out`
+
+| target | mean vx | abs err | resets |
+| --- | ---: | ---: | ---: |
+| 2.50 | 2.4284 | 0.1332 | 2 |
+| 3.00 | 2.6992 | 0.3789 | 6 |
+| 3.50 | 2.0735 | 1.4608 | 24 |
+| 4.00 | 1.2971 | 2.7059 | 39 |
+| 4.25 | 0.6809 | 3.5700 | 47 |
+| 4.50 | 0.1777 | 4.3223 | 66 |
+| 4.75 | -0.2419 | 4.9919 | 62 |
+
+Conclusion:
+
+- `model_23550.pt` is degraded and should not be used for deploy or continuation.
+- `model_23475.pt` also loses high-speed tracking relative to the Stage2A baseline.
+- `model_23450.pt` has a local improvement around `3.5 m/s` but is worse than Stage2A `23425` at `4.0-4.25 m/s`.
+- Recommended continuation checkpoint remains Stage2A `model_23425.pt`, not Stage2B.
+- Next training attempt should reduce the jump from Stage2A:
+  - avoid immediate `4.75` command max;
+  - likely use `4.5` or keep `4.25` while changing sampling/curriculum;
+  - avoid increasing velocity tracking pressure further until the model can start and hold `4.0+` in fixed-speed eval.
