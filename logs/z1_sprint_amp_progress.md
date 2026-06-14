@@ -3822,3 +3822,20 @@ Stage2L checkpoint choice:
   - keep Stage2L `model_23675.pt` for visual inspection and as the best speed-tracking candidate so far.
   - keep Stage2K `model_23650.pt` as the safer mixed fallback.
   - next stage should reduce head/shoulder contact while preserving Stage2L's speed-tracking gains.
+
+Stage2L play/export validation:
+
+- stopped the previous Stage2K GUI play and started Stage2L GUI play.
+- play unit:
+  `z1_stage2l_play_20260615_005129.service`
+- play stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2l_play_23675_cmdx3p4_4p55_cmdy0p18_yaw0p32_env16_20260615_005129.out`
+- checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-25-33_z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517/model_23675.pt`
+- play command range:
+  - `lin_vel_x=(3.4, 4.55)`
+  - `lin_vel_y=(-0.18, 0.18)`
+  - `ang_vel_z=(-0.32, 0.32)`
+- exported artifacts:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-25-33_z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517/exported/policy.pt`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-25-33_z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517/exported/policy.onnx`
