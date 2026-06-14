@@ -1677,11 +1677,21 @@ Window capture:
 - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage2a_23425_window_20260614_1808.png`
 - xwd source:
   - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage2a_23425_window_20260614_1808.xwd`
+- clearer still frame:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage2a_23425_window_clear_20260614_1812.png`
+- short video:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage2a_23425_window_20260614_1812.mp4`
+- extracted frames:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage2a_23425_frames_20260614_1812/`
+- frame montage:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage2a_23425_frames_20260614_1812_montage.png`
 
 Visual note:
 
 - The play window is live and no obvious fallen robot is visible in the captured frame.
 - The captured camera view is too close and partly blocked by the simulation settings panel, so this should be treated only as a weak sanity check.
+- The 6-second frame montage shows robots moving with visible stepping and arm swing; no continuous full-body collapse is obvious.
+- The view is still not a full visual acceptance test because the camera framing is poor and the simulation settings panel remains visible.
 - Do not sync Stage2A `23425` into the deploy repo until a better visual pass confirms start, acceleration, hold, and deceleration behavior.
 
 To stop this play:
@@ -1689,3 +1699,66 @@ To stop this play:
 ```bash
 kill 1364645
 ```
+
+Play process note:
+
+- The Stage2A play process was stopped before the native deploy/MuJoCo smoke checks below.
+
+## Native Deploy/MuJoCo Smoke: Stage2A 23425
+
+Date: `2026-06-14`
+
+Snapshot config:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_20260614_173614/policies/loco_mode/config/LocoMode.yaml`
+- command range: `lin_vel_x=(-2.5, 4.25)`, `lin_vel_y=(-0.5, 0.5)`, `ang_vel_z=(-1.57, 1.57)`
+- dimensions: `command_dim=4`, `num_obs=82`, `num_actions=24`
+- PD: `kp=[113.0267, 59.3361]`, `kd=[7.1955, 3.7775]`
+
+Snapshot model files copied from the Stage2A export into the snapshot-local `policies/loco_mode/model/` directory:
+
+- `policy.onnx`: `0c7c326e72f76d7da4093bb199f2b94582224b2c9e9e759073212912b02e3a70`
+- `policy.onnx.data`: `ed7e7fb12a0bddebce67869ed1d7fd37f5893d0ab9df72d7d6362afd5793d925`
+
+Global deploy repo was not overwritten:
+
+- `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/policies/loco_mode/config/LocoMode.yaml`: `c77307444621c178f1cc26a4fb469b6942709edb438a43f21e6e3e176ad7a12e`
+- `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/policies/loco_mode/model/policy.onnx`: `aa464ee9d79561721c1bee59a64c7908c9eac319a338a37a0cb8876ab25f9cf4`
+- `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/policies/loco_mode/model/policy.onnx.data`: `9c11d9f2cf789fdba9b3ca81a3a8921290b7ab6bdf6eda80f1bbf4b81620db3b`
+
+ONNX shape and native latency:
+
+- ONNX graph: `obs [1,82] -> actions [1,24]`
+- benchmark command: `scripts/run_onnx_benchmark_native.sh --model <snapshot>/policy.onnx --iters 2000 --warmup 100 --threads 1 --obs-dim 82`
+- result: `mean_ms=0.015460`, `p95_ms=0.018791`, `p99_ms=0.020972`, `throughput_hz=63954.81`
+
+C++ consistency fix applied in the deploy repo working tree:
+
+- `controller_cpp/include/mujoco_sim_adapter.h`: default `zero_head_target=false`
+- `controller_cpp/src/dual_inference_rate.cpp`: local PD no longer forces the head target to zero
+- Reason: current policy is 24-action and training controls `head_joint`; MuJoCo/deploy smoke should use the policy head target unless a caller explicitly overrides it.
+- `git diff --check` passed for these two files.
+
+Pure-sim smoke results after the head-target fix:
+
+| normalized vx | approx physical vx | min base height | max gravity xy | max root xy drift | max tau | max dq | note |
+|---:|---:|---:|---:|---:|---:|---:|---|
+| 0.0 | 0.000 | 0.6879 | 0.0932 | 0.0461 | 53.70 | 8.60 | stand healthy |
+| 0.1 | 0.425 | 0.6887 | 0.1092 | 1.1536 | 50.00 | 10.43 | stable |
+| 0.2 | 0.850 | 0.6863 | 0.1490 | 3.0635 | 66.24 | 12.56 | stable |
+| 0.3 | 1.275 | 0.6792 | 0.1660 | 4.6595 | 77.78 | 14.59 | stable |
+| 0.5 | 2.125 | 0.0867 | 1.0000 | 1.6114 | 120.00 | 28.24 | falls in MuJoCo |
+
+Pre-fix reference checks:
+
+- `vx=0.0`: healthy, `min_base_height=0.6877`, `max_gravity_xy=0.0990`
+- `vx=0.5`: fell, `min_base_height=0.0826`, `max_gravity_xy=1.0000`
+- `vx=1.0`: fell, `min_base_height=0.0747`, `max_gravity_xy=1.0000`
+
+Conclusion:
+
+- Native ONNX loading, dimensions, and latency are good.
+- C++ pure-sim can stand and move at low normalized commands.
+- The Stage2A `23425` policy still fails in native MuJoCo around normalized `vx=0.5` (about `2.125 m/s`) even though Isaac fixed-speed eval is healthy at `2.5 m/s`.
+- Head target zeroing was a real deploy/MuJoCo inconsistency and has been fixed locally, but it is not the main high-speed MuJoCo failure.
+- Next investigation should prove the action/joint order against Isaac's runtime joint order, then compare MuJoCo XML/contact/inertia with the Isaac training asset.
