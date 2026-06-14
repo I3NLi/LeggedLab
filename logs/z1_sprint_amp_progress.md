@@ -3494,3 +3494,20 @@ Stage2J checkpoint choice:
 - Remaining limitation:
   - Stage2J still does not solve sustained `4.25-4.5 m/s` straight sprinting.
   - Next stage should mix straight high-speed retention with non-zero `vy/yaw`, rather than only widening the turning commands further.
+
+Stage2J play/export validation:
+
+- stopped the previous Stage2I GUI play (`PID 2913`) and started Stage2J GUI play.
+- play unit:
+  `z1_stage2j_play_20260615_000341.service`
+- play stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2j_play_23625_cmdx3p25_4p5_cmdy0p25_yaw0p45_env16_20260615_000341.out`
+- checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947/model_23625.pt`
+- play command range:
+  - `lin_vel_x=(3.25, 4.5)`
+  - `lin_vel_y=(-0.25, 0.25)`
+  - `ang_vel_z=(-0.45, 0.45)`
+- exported artifacts:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947/exported/policy.pt`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947/exported/policy.onnx`
