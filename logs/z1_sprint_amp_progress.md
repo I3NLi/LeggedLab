@@ -3301,4 +3301,84 @@ Stage2I play/export validation:
 - ONNX shape:
   - input: `obs [1, 82]`
   - output: `actions [1, 24]`
-- Human visual feedback is still pending; do not promote Stage2I above Stage2F for deployment until play is inspected.
+- Human visual feedback on the Stage2I GUI play was positive: the user reported it is running very well.
+- Promote Stage2I to the current visually accepted high-speed candidate, while keeping Stage2F `model_23550.pt` protected as the conservative fallback.
+
+Stage2I gait-quality eval (`num_envs=64`, `duration=6`, `warmup=2`):
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_22-10-27_z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010/eval_gait_quality_23575_3p5_4p5.txt`
+
+| target | mean vx | abs err | p50 vx | p90 abs vx | resets | mean tilt xy | p90 swing foot z | single stance | double stance | flight | contact transitions/env/s | arm abs offset | shoulder pitch offset |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 3.50 | 3.4289 | 0.2851 | 3.5524 | 3.8016 | 2 | 0.0423 | 0.2618 | 0.8676 | 0.0100 | 0.1224 | 7.9271 | 0.2588 | 0.2218 |
+| 4.00 | 3.2580 | 0.8054 | 3.7784 | 4.1279 | 7 | 0.0624 | 0.2644 | 0.8416 | 0.0253 | 0.1332 | 7.8984 | 0.2876 | 0.2691 |
+| 4.25 | 3.3281 | 0.9527 | 3.8720 | 4.2805 | 4 | 0.0646 | 0.2653 | 0.8293 | 0.0243 | 0.1464 | 7.9714 | 0.3008 | 0.2823 |
+| 4.50 | 2.6576 | 1.8456 | 3.2878 | 4.2917 | 15 | 0.0785 | 0.2581 | 0.8294 | 0.0441 | 0.1265 | 7.4609 | 0.2885 | 0.2858 |
+
+Gait-quality interpretation:
+
+- The user-visible Stage2I play is good, but short fixed-command evals still show high-speed saturation above `4.25 m/s`.
+- The gait remains running-like at `3.5-4.25` with high single-stance ratio and non-zero flight ratio.
+- At fixed `4.5`, mean speed drops and tilt rises; this remains the next high-speed target after command-direction robustness.
+
+Stage2I turning baseline (`vy=0.20`, `wz=0.35`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_22-10-27_z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010/eval_fixed_command_23575_vy0p20_wz0p35_env32.txt`
+
+| target vx | target vy | target wz | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 3.50 | 0.20 | 0.35 | 3.3465 | 0.2599 | 0.2875 | 0.2690 | 0.1474 | 0.4614 | 0.3413 | 0.5925 | 0 | 0 | 0 |
+| 4.00 | 0.20 | 0.35 | 3.0252 | 0.2103 | 0.2981 | 0.9888 | 0.1955 | 0.5189 | 1.0354 | 2.7442 | 3 | 3 | 0 |
+| 4.25 | 0.20 | 0.35 | 2.4904 | 0.1883 | 0.3345 | 1.7627 | 0.2243 | 0.5297 | 1.7964 | 3.9550 | 10 | 3 | 7 |
+
+Turning baseline interpretation:
+
+- Stage2I was optimized for straight sprinting (`lin_vel_y=(-0.08, 0.08)`, `ang_vel_z=(-0.18, 0.18)`), so this failure mode is expected.
+- It tracks `vy` direction roughly, but high-speed turning causes forward velocity collapse first; at `4.25 + vy0.20 + wz0.35`, most failures are speed tracking.
+- Next stage should strengthen lateral/yaw command tracking without immediately increasing the straight-line x-speed target.
+
+## Stage2J: turning and lateral-command robustness
+
+Purpose:
+
+- Build from the visually accepted Stage2I checkpoint.
+- Keep the fast-running posture, but train non-zero `lin_vel_y` and `ang_vel_z` so the policy can change direction while preserving forward speed.
+
+Config changes:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2j_turnrobust`
+- base: `MagicBotZ1FlatSprintAMPStage2IHighTrackEnvCfg`
+- command range:
+  - `lin_vel_x=(3.25, 4.5)`
+  - `lin_vel_y=(-0.25, 0.25)`
+  - `ang_vel_z=(-0.45, 0.45)`
+- reference motion:
+  - `min_command_speed=3.25`
+  - `max_reference_speed=5.1`
+  - `speed_match_tolerance=0.75`
+- reward tuning:
+  - `track_lin_vel_xy_exp.weight=1.80`
+  - `track_lin_vel_xy_exp.std=1.05`
+  - `track_ang_vel_z_exp.weight=1.45`
+  - `track_ang_vel_z_exp.std=0.55`
+  - `forward_speed_progress.weight=0.20`
+  - `forward_speed_progress.min_command_x=3.25`
+- agent:
+  - `learning_rate=4e-5`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.25`
+  - `save_interval=25`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+  - `legged_lab/scripts/eval_fixed_speed.py`
+- registry check passed:
+  - task resolves as `magicbot_z1_flat_sprint_amp_stage2j_turnrobust`
+  - `speed_tracking_duration_s` remains `2.5`
+  - command and reward values match the intended Stage2J settings.
+- `eval_fixed_speed.py` now supports fixed `--lin_vel_y` and `--ang_vel_z`, so future evals can measure turning and lateral tracking instead of only straight-line speed.

@@ -6,7 +6,7 @@ import torch
 from isaaclab.app import AppLauncher
 
 
-parser = argparse.ArgumentParser(description="Evaluate a trained policy with fixed forward speed commands.")
+parser = argparse.ArgumentParser(description="Evaluate a trained policy with fixed velocity commands.")
 parser.add_argument("--task", type=str, required=True, help="Name of the task.")
 parser.add_argument("--load_run", type=str, required=True, help="Run folder to load from.")
 parser.add_argument("--checkpoint", type=str, required=True, help="Checkpoint filename to load.")
@@ -14,6 +14,8 @@ parser.add_argument("--num_envs", type=int, default=32, help="Number of environm
 parser.add_argument("--duration", type=float, default=8.0, help="Measured duration per speed in seconds.")
 parser.add_argument("--warmup", type=float, default=3.0, help="Warmup duration before measuring.")
 parser.add_argument("--speeds", nargs="+", type=float, required=True, help="Fixed x velocity commands to evaluate.")
+parser.add_argument("--lin_vel_y", type=float, default=0.0, help="Fixed y velocity command.")
+parser.add_argument("--ang_vel_z", type=float, default=0.0, help="Fixed yaw-rate command.")
 AppLauncher.add_app_launcher_args(parser)
 args_cli, _ = parser.parse_known_args()
 
@@ -21,6 +23,7 @@ app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 from isaaclab_tasks.utils import get_checkpoint_path  # noqa: E402
+import isaaclab.utils.math as math_utils  # noqa: E402
 from rsl_rl.runners import OnPolicyRunner  # noqa: E402
 
 from legged_lab.envs import *  # noqa: E402,F401,F403
@@ -32,8 +35,8 @@ def _configure_env(env_cfg, num_envs: int):
     env_cfg.domain_rand.events.push_robot = None
     env_cfg.episode_length_curriculum.enable = False
     env_cfg.commands.heading_command = False
-    env_cfg.commands.ranges.lin_vel_y = (0.0, 0.0)
-    env_cfg.commands.ranges.ang_vel_z = (0.0, 0.0)
+    env_cfg.commands.ranges.lin_vel_y = (args_cli.lin_vel_y, args_cli.lin_vel_y)
+    env_cfg.commands.ranges.ang_vel_z = (args_cli.ang_vel_z, args_cli.ang_vel_z)
     env_cfg.commands.ranges.heading = (0.0, 0.0)
     env_cfg.scene.num_envs = num_envs
     env_cfg.scene.max_episode_length_s = 20.0
@@ -49,9 +52,11 @@ def _configure_env(env_cfg, num_envs: int):
         env_cfg.scene.terrain_generator.difficulty_range = (0.4, 0.4)
 
 
-def _force_command(env, vx: float):
+def _force_command(env, vx: float, vy: float, wz: float):
     target = torch.zeros((env.num_envs, 3), device=env.device)
     target[:, 0] = vx
+    target[:, 1] = vy
+    target[:, 2] = wz
     env.command_generator.vel_command_b[:] = target
     env.command_generator.is_standing_env[:] = False
     env.command_generator.is_heading_env[:] = False
@@ -61,13 +66,12 @@ def _force_command(env, vx: float):
         env._command_buf[:] = target
 
 
-def _critic_body_frame_vx(env, extras):
-    critic_obs = extras.get("observations", {}).get("critic")
-    if critic_obs is None:
-        raise RuntimeError("Critic observations are missing from env extras; cannot read root velocity.")
-    feet_count = len(env.feet_cfg.body_ids)
-    root_lin_vel_start = critic_obs.shape[-1] - feet_count - 3
-    return critic_obs[:, root_lin_vel_start] / env.obs_scales.lin_vel
+def _root_command_state(env):
+    root_quat_w = env._tensor(env.robot.data.root_quat_w)
+    root_lin_vel_w = env._tensor(env.robot.data.root_lin_vel_w)
+    root_lin_vel_yaw = math_utils.quat_apply_inverse(math_utils.yaw_quat(root_quat_w), root_lin_vel_w[:, :3])
+    root_ang_vel_w = env._tensor(env.robot.data.root_ang_vel_w)
+    return root_lin_vel_yaw[:, 0], root_lin_vel_yaw[:, 1], root_ang_vel_w[:, 2]
 
 
 def _build_env_and_policy():
@@ -151,47 +155,83 @@ def _run_one_speed(env, policy, vx: float):
 
     warmup_steps = int(args_cli.warmup / env.step_dt)
     sample_steps = int(args_cli.duration / env.step_dt)
-    samples = []
+    vx_samples = []
+    vy_samples = []
+    wz_samples = []
+    xy_err_samples = []
     resets = 0
 
-    print(f"[INFO] Evaluating target={vx:.3f}", flush=True)
+    print(
+        f"[INFO] Evaluating target_vx={vx:.3f} target_vy={args_cli.lin_vel_y:.3f} "
+        f"target_wz={args_cli.ang_vel_z:.3f}",
+        flush=True,
+    )
     with torch.inference_mode():
         for step in range(warmup_steps + sample_steps):
-            _force_command(env, vx)
+            _force_command(env, vx, args_cli.lin_vel_y, args_cli.ang_vel_z)
             actions = policy(obs)
             obs, _, dones, extras = env.step(actions)
             if isinstance(obs, tuple):
                 obs, _ = obs
             if dones is not None:
                 resets += int(dones.sum().item())
-            _force_command(env, vx)
+            _force_command(env, vx, args_cli.lin_vel_y, args_cli.ang_vel_z)
             if step >= warmup_steps:
-                samples.extend(_critic_body_frame_vx(env, extras).detach().float().cpu().tolist())
+                root_vx, root_vy, root_wz = _root_command_state(env)
+                vx_tensor = root_vx.detach().float()
+                vy_tensor = root_vy.detach().float()
+                wz_tensor = root_wz.detach().float()
+                xy_err = torch.sqrt((vx_tensor - vx) ** 2 + (vy_tensor - args_cli.lin_vel_y) ** 2)
+                vx_samples.extend(vx_tensor.cpu().tolist())
+                vy_samples.extend(vy_tensor.cpu().tolist())
+                wz_samples.extend(wz_tensor.cpu().tolist())
+                xy_err_samples.extend(xy_err.cpu().tolist())
 
-    print(f"[INFO] Finished target={vx:.3f}", flush=True)
+    print(f"[INFO] Finished target_vx={vx:.3f}", flush=True)
     reset_reasons = _reset_reason_counts(env)
 
-    if not samples:
+    if not vx_samples:
         return {
             "target": vx,
+            "target_vy": args_cli.lin_vel_y,
+            "target_wz": args_cli.ang_vel_z,
             "mean_vx": 0.0,
+            "mean_vy": 0.0,
+            "mean_wz": 0.0,
             "mean_abs_vx": 0.0,
             "abs_err": 0.0,
+            "vy_abs_err": 0.0,
+            "wz_abs_err": 0.0,
+            "xy_abs_err": 0.0,
             "p50_vx": 0.0,
             "p90_abs_vx": 0.0,
+            "p90_xy_err": 0.0,
+            "p90_wz_abs_err": 0.0,
             "resets": resets,
             **reset_reasons,
         }
 
-    abs_samples = sorted(abs(value) for value in samples)
+    abs_samples = sorted(abs(value) for value in vx_samples)
+    sorted_xy_err = sorted(xy_err_samples)
+    sorted_wz_abs_err = sorted(abs(value - args_cli.ang_vel_z) for value in wz_samples)
     p90_idx = int(0.9 * (len(abs_samples) - 1))
+    p90_err_idx = int(0.9 * (len(sorted_xy_err) - 1))
     return {
         "target": vx,
-        "mean_vx": statistics.fmean(samples),
+        "target_vy": args_cli.lin_vel_y,
+        "target_wz": args_cli.ang_vel_z,
+        "mean_vx": statistics.fmean(vx_samples),
+        "mean_vy": statistics.fmean(vy_samples),
+        "mean_wz": statistics.fmean(wz_samples),
         "mean_abs_vx": statistics.fmean(abs_samples),
-        "abs_err": statistics.fmean(abs(value - vx) for value in samples),
-        "p50_vx": statistics.median(samples),
+        "abs_err": statistics.fmean(abs(value - vx) for value in vx_samples),
+        "vy_abs_err": statistics.fmean(abs(value - args_cli.lin_vel_y) for value in vy_samples),
+        "wz_abs_err": statistics.fmean(abs(value - args_cli.ang_vel_z) for value in wz_samples),
+        "xy_abs_err": statistics.fmean(xy_err_samples),
+        "p50_vx": statistics.median(vx_samples),
         "p90_abs_vx": abs_samples[p90_idx],
+        "p90_xy_err": sorted_xy_err[p90_err_idx],
+        "p90_wz_abs_err": sorted_wz_abs_err[p90_err_idx],
         "resets": resets,
         **reset_reasons,
     }

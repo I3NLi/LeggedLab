@@ -488,6 +488,23 @@ class MagicBotZ1FlatSprintAMPStage2IHighTrackEnvCfg(MagicBotZ1FlatSprintAMPStage
 
 
 @configclass
+class MagicBotZ1FlatSprintAMPStage2JTurnRobustEnvCfg(MagicBotZ1FlatSprintAMPStage2IHighTrackEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.ranges.lin_vel_x = (3.25, 4.5)
+        self.commands.ranges.lin_vel_y = (-0.25, 0.25)
+        self.commands.ranges.ang_vel_z = (-0.45, 0.45)
+        self.reference_motion.min_command_speed = 3.25
+        self.reference_motion.speed_match_tolerance = 0.75
+        self.reward.track_lin_vel_xy_exp.weight = 1.80
+        self.reward.track_lin_vel_xy_exp.params["std"] = 1.05
+        self.reward.track_ang_vel_z_exp.weight = 1.45
+        self.reward.track_ang_vel_z_exp.params["std"] = 0.55
+        self.reward.forward_speed_progress.weight = 0.20
+        self.reward.forward_speed_progress.params["min_command_x"] = 3.25
+
+
+@configclass
 class MagicBotZ1FlatAgentCfg(G1FlatAgentCfg):
     experiment_name: str = "magicbot_z1_flat"
     wandb_project: str = "magicbot_z1_flat"
@@ -642,6 +659,21 @@ class MagicBotZ1FlatSprintAMPStage2IHighTrackAgentCfg(MagicBotZ1FlatSprintAMPAge
         self.algorithm.learning_rate = 4.0e-5
         self.motion_prior.reward_coef = 0.08
         self.motion_prior.reward_min_command_speed = 3.5
+        self.save_interval = 25
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage2JTurnRobustAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = (
+        "z1_sprint_amp_stage2j_turnrobust_cmdx3p25_4p5_"
+        "cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_lr4e-5"
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.learning_rate = 4.0e-5
+        self.motion_prior.reward_coef = 0.08
+        self.motion_prior.reward_min_command_speed = 3.25
         self.save_interval = 25
 
 
