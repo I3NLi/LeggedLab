@@ -51,6 +51,10 @@ def track_root_height_exp(env: BaseEnv, std: float, asset_cfg: SceneEntityCfg = 
     return torch.exp(-root_height_error / std**2)
 
 
+def alive(env: BaseEnv) -> torch.Tensor:
+    return (~env.reset_buf).float()
+
+
 def lin_vel_z_l2(env: BaseEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     return torch.square(env._tensor(asset.data.root_lin_vel_b)[:, 2])

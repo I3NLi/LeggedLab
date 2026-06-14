@@ -30,8 +30,16 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--play_lin_vel_x_min", type=float, default=None, help="Minimum linear velocity command on x-axis.")
 parser.add_argument("--play_lin_vel_x", type=float, default=0.6, help="Fixed linear velocity command on x-axis.")
+parser.add_argument("--play_lin_vel_y_min", type=float, default=None, help="Minimum linear velocity command on y-axis.")
 parser.add_argument("--play_lin_vel_y", type=float, default=0.0, help="Fixed linear velocity command on y-axis.")
+parser.add_argument("--play_ang_vel_z_min", type=float, default=None, help="Minimum angular velocity command on z-axis.")
+parser.add_argument("--play_ang_vel_z", type=float, default=0.0, help="Fixed angular velocity command on z-axis.")
 parser.add_argument("--play_heading", type=float, default=0.0, help="Fixed heading command.")
+parser.add_argument(
+    "--velocity_debug_vis",
+    action="store_true",
+    help="Draw command/velocity arrows during visual play.",
+)
 # Export-only mode is useful for headless batch jobs that only need policy artifacts.
 parser.add_argument(
     "--export_only",
@@ -66,7 +74,7 @@ def play():
     env_cfg.noise.add_noise = False
     env_cfg.domain_rand.events.push_robot = None
     env_cfg.episode_length_curriculum.enable = False
-    env_cfg.commands.debug_vis = True
+    env_cfg.commands.debug_vis = args_cli.velocity_debug_vis
     env_cfg.scene.max_episode_length_s = 40.0
     env_cfg.scene.num_envs = 50
     env_cfg.scene.env_spacing = 2.5
@@ -74,11 +82,23 @@ def play():
     lin_vel_x_min, _lin_vel_x_max = env_cfg.commands.ranges.lin_vel_x
     if args_cli.play_lin_vel_x_min is not None:
         lin_vel_x_min = args_cli.play_lin_vel_x_min
+    lin_vel_y_min = args_cli.play_lin_vel_y
+    if args_cli.play_lin_vel_y_min is not None:
+        lin_vel_y_min = args_cli.play_lin_vel_y_min
+    ang_vel_z_min = args_cli.play_ang_vel_z
+    if args_cli.play_ang_vel_z_min is not None:
+        ang_vel_z_min = args_cli.play_ang_vel_z_min
     env_cfg.commands.ranges.lin_vel_x = (lin_vel_x_min, args_cli.play_lin_vel_x)
-    env_cfg.commands.ranges.lin_vel_y = (args_cli.play_lin_vel_y, args_cli.play_lin_vel_y)
-    env_cfg.commands.ranges.ang_vel_z = (0.0, 0.0)
+    env_cfg.commands.ranges.lin_vel_y = (lin_vel_y_min, args_cli.play_lin_vel_y)
+    env_cfg.commands.ranges.ang_vel_z = (ang_vel_z_min, args_cli.play_ang_vel_z)
     env_cfg.commands.ranges.heading = (args_cli.play_heading, args_cli.play_heading)
     env_cfg.commands.heading_command = False
+    print(
+        "[INFO] Play command ranges: "
+        f"lin_vel_x={env_cfg.commands.ranges.lin_vel_x}, "
+        f"lin_vel_y={env_cfg.commands.ranges.lin_vel_y}, "
+        f"ang_vel_z={env_cfg.commands.ranges.ang_vel_z}"
+    )
     env_cfg.scene.height_scanner.drift_range = (0.0, 0.0)
 
     # env_cfg.scene.terrain_generator = None
@@ -93,12 +113,31 @@ def play():
     if args_cli.num_envs is not None:
         env_cfg.scene.num_envs = args_cli.num_envs
 
+    if args_cli.export_only:
+        for event_name in (
+            "physics_material",
+            "add_base_mass",
+            "add_torso_mass",
+            "add_hand_mass",
+            "randomize_torso_pelvis_com",
+            "randomize_actuator_gains",
+            "randomize_joint_friction",
+            "push_robot",
+        ):
+            if hasattr(env_cfg.domain_rand.events, event_name):
+                setattr(env_cfg.domain_rand.events, event_name, None)
+        env_cfg.domain_rand.action_delay.enable = False
+
     agent_cfg = update_rsl_rl_cfg(agent_cfg, args_cli)
     env_cfg.scene.seed = agent_cfg.seed
 
     env_class = task_registry.get_task_class(env_class_name)
     env = env_class(env_cfg, args_cli.headless)
     env.command_metrics_enabled = False
+    if not args_cli.headless:
+        # Isaac Sim 5.1 GUI play can invalidate the asset's strong root_view while
+        # ArticulationData only keeps a weak proxy, causing root pose reads to crash.
+        env.robot.data._root_view = env.robot.root_view
 
     log_root_path = os.path.join("logs", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)

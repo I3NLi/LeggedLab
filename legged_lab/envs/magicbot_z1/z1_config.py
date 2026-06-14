@@ -1,6 +1,7 @@
 # Copyright (c) 2025-2026, The Legged Lab Project Developers.
 # All rights reserved.
 
+from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers.scene_entity_cfg import SceneEntityCfg
 from isaaclab.utils import configclass
@@ -18,6 +19,7 @@ HEAD_SHOULDER_CONTACT_BODY_NAMES = [".*head.*", ".*shoulder.*"]
 
 @configclass
 class MagicBotZ1RewardCfg(RewardCfg):
+    alive = RewTerm(func=mdp.alive, weight=0.02)
     track_lin_vel_xy_exp = RewTerm(func=mdp.track_lin_vel_xy_yaw_frame_exp, weight=1.0, params={"std": 0.5})
     track_ang_vel_z_exp = RewTerm(func=mdp.track_ang_vel_z_world_exp, weight=1.0, params={"std": 0.5})
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-1.0)
@@ -110,13 +112,15 @@ def _apply_magicbot_z1_upstream_commands(env_cfg) -> None:
     env_cfg.commands.rel_heading_envs = 1.0
     env_cfg.commands.heading_command = True
     env_cfg.commands.heading_control_stiffness = 0.5
+    env_cfg.commands.command_slew_rate = (2.0, 1.0, 2.0)
     env_cfg.commands.debug_vis = True
-    env_cfg.commands.ranges.lin_vel_x = (-0.6, 1.0)
+    env_cfg.commands.ranges.lin_vel_x = (-2.5, 5.0)
     env_cfg.commands.ranges.lin_vel_y = (-0.5, 0.5)
     env_cfg.commands.ranges.ang_vel_z = (-1.57, 1.57)
 
 
 def _apply_magicbot_z1_upstream_reward_weights(env_cfg) -> None:
+    env_cfg.reward.alive.weight = 0.02
     env_cfg.reward.track_lin_vel_xy_exp.weight = 1.0
     env_cfg.reward.track_ang_vel_z_exp.weight = 1.0
     env_cfg.reward.lin_vel_z_l2.weight = -1.0
@@ -147,18 +151,72 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
 
     env_cfg.robot.terminate_contacts_body_names = NON_FOOT_CONTACT_BODY_NAMES
     env_cfg.robot.immediate_terminate_contacts_body_names = HEAD_SHOULDER_CONTACT_BODY_NAMES
-    env_cfg.robot.terminate_contacts_delay_s = 0.0
+    env_cfg.robot.terminate_contacts_delay_s = 1.0
+    env_cfg.robot.terminate_contacts_recovery_height = 0.65
     env_cfg.robot.terminate_when_speed_tracking_failed = True
     env_cfg.robot.speed_tracking_command_threshold = 0.5
     env_cfg.robot.speed_tracking_abs_error_threshold = 0.5
     env_cfg.robot.speed_tracking_rel_error_threshold = 0.35
     env_cfg.robot.speed_tracking_grace_s = 2.0
-    env_cfg.robot.speed_tracking_duration_s = 1.2
+    env_cfg.robot.speed_tracking_duration_s = 2.5
     env_cfg.robot.feet_body_names = FOOT_BODY_NAMES
     # Local base_env has an extra root-height command; 0.0 falls back to the Z1 init height.
     env_cfg.commands.root_height = 0.0
 
-    env_cfg.domain_rand.events.add_base_mass.params["asset_cfg"].body_names = [".*torso.*"]
+    env_cfg.domain_rand.events.physics_material.params["static_friction_range"] = (0.2, 1.2)
+    env_cfg.domain_rand.events.physics_material.params["dynamic_friction_range"] = (0.2, 1.2)
+    env_cfg.domain_rand.events.physics_material.params["restitution_range"] = (0.0, 0.0)
+    env_cfg.domain_rand.events.add_base_mass.params["asset_cfg"].body_names = ".*"
+    env_cfg.domain_rand.events.add_base_mass.params["mass_distribution_params"] = (0.9, 1.1)
+    env_cfg.domain_rand.events.add_base_mass.params["operation"] = "scale"
+    env_cfg.domain_rand.events.add_base_mass.params["recompute_inertia"] = True
+    env_cfg.domain_rand.events.add_torso_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*torso.*"),
+            "mass_distribution_params": (-1.0, 5.0),
+            "operation": "add",
+            "recompute_inertia": True,
+        },
+    )
+    env_cfg.domain_rand.events.add_hand_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=["left_wrist_yaw_link", "right_wrist_yaw_link"]),
+            "mass_distribution_params": (-0.5, 3.0),
+            "operation": "add",
+            "recompute_inertia": True,
+        },
+    )
+    env_cfg.domain_rand.events.randomize_torso_pelvis_com = EventTerm(
+        func=mdp.randomize_rigid_body_com_fixed,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=["pelvis", "torso_link"]),
+            "com_range": {"x": (-0.02, 0.02), "y": (-0.02, 0.02), "z": (-0.01, 0.01)},
+        },
+    )
+    env_cfg.domain_rand.events.randomize_actuator_gains = EventTerm(
+        func=mdp.randomize_actuator_gains_fixed,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
+            "stiffness_distribution_params": (0.9, 1.1),
+            "damping_distribution_params": (0.85, 1.15),
+            "operation": "scale",
+        },
+    )
+    env_cfg.domain_rand.events.randomize_joint_friction = EventTerm(
+        func=mdp.randomize_joint_parameters,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
+            "friction_distribution_params": (0.0, 0.15),
+            "operation": "abs",
+        },
+    )
     env_cfg.domain_rand.events.reset_base.params["velocity_range"] = {
         "x": (-0.5, 0.5),
         "y": (-0.5, 0.5),
@@ -167,8 +225,20 @@ def _apply_magicbot_z1_overrides(env_cfg) -> None:
         "pitch": (-0.5, 0.5),
         "yaw": (-0.5, 0.5),
     }
+    # Use additive reset noise so zero-default joints are randomized too.
+    env_cfg.domain_rand.events.reset_robot_joints.func = mdp.reset_joints_by_offset
+    env_cfg.domain_rand.events.reset_robot_joints.params["position_range"] = (-0.25, 0.25)
+    env_cfg.domain_rand.events.reset_robot_joints.params["velocity_range"] = (-0.5, 0.5)
     env_cfg.domain_rand.events.push_robot.interval_range_s = (10.0, 15.0)
     env_cfg.domain_rand.events.push_robot.params["velocity_range"] = {"x": (-1.0, 1.0), "y": (-1.0, 1.0)}
+    env_cfg.domain_rand.action_delay.enable = True
+    env_cfg.domain_rand.action_delay.params = {"min_delay": 0, "max_delay": 1}
+
+    env_cfg.noise.add_bias = True
+    env_cfg.noise.bias_scales.ang_vel = 0.03
+    env_cfg.noise.bias_scales.projected_gravity = 0.02
+    env_cfg.noise.bias_scales.joint_pos = 0.01
+    env_cfg.noise.bias_scales.joint_vel = 0.10
 
 
 @configclass

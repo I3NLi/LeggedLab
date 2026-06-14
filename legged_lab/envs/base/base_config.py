@@ -61,6 +61,8 @@ class RobotCfg:
     feet_body_names: list = []
     # Allow brief recovery after a fall before terminating the episode.
     terminate_contacts_delay_s: float = 1.0
+    # If > 0, non-immediate contact termination is cancelled while root height is above this value.
+    terminate_contacts_recovery_height: float = -1.0
     terminate_when_speed_tracking_failed: bool = False
     speed_tracking_command_threshold: float = 0.5
     speed_tracking_abs_error_threshold: float = 0.5
@@ -105,6 +107,8 @@ class CommandsCfg:
     heading_command: bool = True
     heading_control_stiffness: float = 0.5
     root_height: float = 0.8
+    # Max command change per second for vx, vy, wz. Non-positive values disable slew on that axis.
+    command_slew_rate: tuple = (0.0, 0.0, 0.0)
     debug_vis: bool = False
     ranges: CommandRangesCfg = CommandRangesCfg()
 
@@ -172,9 +176,19 @@ class NoiseScalesCfg:
 
 
 @configclass
+class ObsBiasScalesCfg:
+    ang_vel: float = 0.0
+    projected_gravity: float = 0.0
+    joint_pos: float = 0.0
+    joint_vel: float = 0.0
+
+
+@configclass
 class NoiseCfg:
     add_noise: bool = True
     noise_scales: NoiseScalesCfg = NoiseScalesCfg()
+    add_bias: bool = False
+    bias_scales: ObsBiasScalesCfg = ObsBiasScalesCfg()
 
 
 @configclass

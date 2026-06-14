@@ -161,11 +161,24 @@ class BaseEnv(VecEnv):
         self._root_height_command_buf = torch.full(
             (self.num_envs, 1), self._root_height_command, device=self.device
         )
+        command_slew_rate = getattr(self.cfg.commands, "command_slew_rate", (0.0, 0.0, 0.0))
+        self._command_slew_rate = torch.tensor(
+            [float(command_slew_rate[0]), float(command_slew_rate[1]), float(command_slew_rate[2])],
+            device=self.device,
+            dtype=torch.float,
+        ).clamp(min=0.0)
+        self._command_slew_enabled = bool(torch.any(self._command_slew_rate > 0.0).item())
+        self._command_buf = torch.zeros((self.num_envs, 3), device=self.device, dtype=torch.float)
         self._termination_contact_delay_s = max(0.0, float(self.cfg.robot.terminate_contacts_delay_s))
+        self._termination_contact_recovery_height = float(self.cfg.robot.terminate_contacts_recovery_height)
         self._termination_contact_enabled = True
         self._static_log_info = {
             "Config/termination_delay_s": float(self._termination_contact_delay_s),
+            "Config/termination_recovery_height": float(self._termination_contact_recovery_height),
             "Config/root_height_command": float(self._root_height_command),
+            "Config/command_slew_rate_x": float(self._command_slew_rate[0].item()),
+            "Config/command_slew_rate_y": float(self._command_slew_rate[1].item()),
+            "Config/command_slew_rate_yaw": float(self._command_slew_rate[2].item()),
         }
         self._episode_len_curriculum_round = 0
         self._episode_len_curriculum_sum = 0.0
@@ -202,7 +215,7 @@ class BaseEnv(VecEnv):
         joint_pos = self._tensor(robot.data.joint_pos) - self._tensor(robot.data.default_joint_pos)
         joint_vel = self._tensor(robot.data.joint_vel) - self._tensor(robot.data.default_joint_vel)
         action = self.action_buffer._circular_buffer.buffer[:, -1, :]
-        current_actor_obs = torch.cat(
+        current_actor_obs_clean = torch.cat(
             [
                 ang_vel * self.obs_scales.ang_vel,
                 projected_gravity * self.obs_scales.projected_gravity,
@@ -218,13 +231,17 @@ class BaseEnv(VecEnv):
         net_contact_forces = self._tensor(net_contact_forces)
         feet_contact = torch.max(torch.norm(net_contact_forces[:, :, self.feet_cfg.body_ids], dim=-1), dim=1)[0] > 0.5
         current_critic_obs = torch.cat(
-            [current_actor_obs, root_lin_vel * self.obs_scales.lin_vel, feet_contact], dim=-1
+            [current_actor_obs_clean, root_lin_vel * self.obs_scales.lin_vel, feet_contact], dim=-1
         )
+        current_actor_obs = current_actor_obs_clean
+        if getattr(self, "obs_bias_buf", None) is not None:
+            current_actor_obs = current_actor_obs + self.obs_bias_buf
 
         return current_actor_obs, current_critic_obs
 
     def _command_tensor(self):
-        return torch.cat([self._tensor(self.command_generator.command), self._root_height_command_buf], dim=-1)
+        command = self._command_buf if self._command_slew_enabled else self._tensor(self.command_generator.command)
+        return torch.cat([command, self._root_height_command_buf], dim=-1)
 
     def _resolve_root_height_command(self):
         root_height = float(self.cfg.commands.root_height)
@@ -288,6 +305,9 @@ class BaseEnv(VecEnv):
         self.extras["time_outs"] = self.time_out_buf
 
         self.command_generator.reset(env_ids)
+        if self._command_slew_enabled:
+            self._command_buf[env_ids] = 0.0
+        self._resample_obs_bias(env_ids)
         self.actor_obs_buffer.reset(env_ids)
         self.critic_obs_buffer.reset(env_ids)
         self.action_buffer.reset(env_ids)
@@ -350,6 +370,7 @@ class BaseEnv(VecEnv):
     def _compute_command_generator(self):
         if self.command_metrics_enabled:
             self.command_generator.compute(self.step_dt)
+            self._update_command_slew()
             return
 
         self.command_generator.time_left -= self.step_dt
@@ -357,6 +378,19 @@ class BaseEnv(VecEnv):
         if len(resample_env_ids) > 0:
             self.command_generator._resample(resample_env_ids)
         self.command_generator._update_command()
+        self._update_command_slew()
+
+    def _update_command_slew(self):
+        if not self._command_slew_enabled:
+            return
+        target_command = self._tensor(self.command_generator.command)
+        max_delta = self._command_slew_rate.unsqueeze(0) * self.step_dt
+        delta = target_command - self._command_buf
+        limited_delta = torch.clamp(delta, min=-max_delta, max=max_delta)
+        pass_through_axes = self._command_slew_rate <= 0.0
+        if torch.any(pass_through_axes):
+            limited_delta[:, pass_through_axes] = delta[:, pass_through_axes]
+        self._command_buf += limited_delta
 
     def check_reset(self):
         net_contact_forces = self._tensor(self.contact_sensor.data.net_forces_w_history)
@@ -408,8 +442,12 @@ class BaseEnv(VecEnv):
         if self._termination_contact_delay_s <= 0.0:
             reset_buf = delayed_termination_contact
         else:
-            # Accumulate continuous fall duration; reset when contact clears.
+            # Accumulate recoverable fall duration; reset when contact clears or the base stands back up.
             contact_mask = delayed_termination_contact.to(self._termination_contact_time_buf.dtype)
+            if self._termination_contact_recovery_height > 0.0:
+                root_height = self._tensor(self.robot.data.root_pos_w)[:, 2]
+                recovered = root_height >= self._termination_contact_recovery_height
+                contact_mask *= (~recovered).to(contact_mask.dtype)
             self._termination_contact_time_buf.mul_(contact_mask).add_(contact_mask * self.step_dt)
             reset_buf = self._termination_contact_time_buf >= self._termination_contact_delay_s
         self._reset_reason_body_contact_buf[:] = reset_buf
@@ -591,6 +629,8 @@ class BaseEnv(VecEnv):
         return int(env_ids.numel())
 
     def init_obs_buffer(self):
+        self.obs_bias_buf = None
+        self.obs_bias_scale_vec = None
         if self.add_noise:
             actor_obs, _ = self.compute_current_observations()
             noise_vec = torch.zeros_like(actor_obs[0])
@@ -621,12 +661,38 @@ class BaseEnv(VecEnv):
                 height_scan_noise_vec[:] = noise_scales.height_scan * self.obs_scales.height_scan
                 self.height_scan_noise_vec = height_scan_noise_vec
 
+        actor_obs, _ = self.compute_current_observations()
+        self.obs_bias_buf = torch.zeros_like(actor_obs)
+        self.obs_bias_scale_vec = torch.zeros_like(actor_obs[0])
+        if self.cfg.noise.add_bias:
+            bias_scales = self.cfg.noise.bias_scales
+            self.obs_bias_scale_vec[:3] = bias_scales.ang_vel * self.obs_scales.ang_vel
+            self.obs_bias_scale_vec[3:6] = bias_scales.projected_gravity * self.obs_scales.projected_gravity
+            command_start = 6
+            command_end = command_start + self._command_tensor().shape[1]
+            joint_pos_start = command_end
+            joint_vel_start = joint_pos_start + self.num_actions
+            action_start = joint_vel_start + self.num_actions
+            self.obs_bias_scale_vec[command_start:command_end] = 0.0
+            self.obs_bias_scale_vec[joint_pos_start:joint_vel_start] = bias_scales.joint_pos * self.obs_scales.joint_pos
+            self.obs_bias_scale_vec[joint_vel_start:action_start] = bias_scales.joint_vel * self.obs_scales.joint_vel
+            self.obs_bias_scale_vec[action_start:] = 0.0
+            self._resample_obs_bias(torch.arange(self.num_envs, device=self.device))
+
         self.actor_obs_buffer = CircularBuffer(
             max_len=self.cfg.robot.actor_obs_history_length, batch_size=self.num_envs, device=self.device
         )
         self.critic_obs_buffer = CircularBuffer(
             max_len=self.cfg.robot.critic_obs_history_length, batch_size=self.num_envs, device=self.device
         )
+
+    def _resample_obs_bias(self, env_ids):
+        if self.obs_bias_buf is None or self.obs_bias_scale_vec is None or not self.cfg.noise.add_bias:
+            return
+        if len(env_ids) == 0:
+            return
+        bias = 2.0 * torch.rand((len(env_ids), self.obs_bias_scale_vec.numel()), device=self.device) - 1.0
+        self.obs_bias_buf[env_ids] = bias * self.obs_bias_scale_vec
 
     def _update_episode_length_curriculum(self, env_ids):
         cfg = self.cfg.episode_length_curriculum

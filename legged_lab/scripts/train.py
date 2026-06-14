@@ -25,6 +25,17 @@ parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
+parser.add_argument(
+    "--deploy_yaml_root",
+    type=str,
+    default=None,
+    help="Deploy repo root to receive generated MagicBot Z1 LocoMode YAML files.",
+)
+parser.add_argument(
+    "--skip_deploy_yaml",
+    action="store_true",
+    help="Skip generating MagicBot Z1 deploy YAML files during training startup.",
+)
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
@@ -44,6 +55,7 @@ from isaaclab_tasks.utils import get_checkpoint_path
 
 from legged_lab.envs import *  # noqa:F401, F403
 from legged_lab.utils.cli_args import update_rsl_rl_cfg
+from legged_lab.utils.magicbot_deploy_yaml import export_magicbot_z1_deploy_yamls
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -101,6 +113,17 @@ def train():
 
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
+    if not args_cli.skip_deploy_yaml:
+        deploy_yaml_paths = export_magicbot_z1_deploy_yamls(
+            env_class_name,
+            env_cfg,
+            log_dir=log_dir,
+            deploy_root=args_cli.deploy_yaml_root,
+        )
+        if deploy_yaml_paths:
+            print("[INFO] Generated MagicBot Z1 deploy YAML files:")
+            for path in deploy_yaml_paths:
+                print(f"  {path}")
 
     runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
 

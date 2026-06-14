@@ -76,3 +76,15 @@ Report for 09:00 CST
 [2026-03-06 11:01:21 CST] Cron: 双训练进度与评估报告（whole_body_tracking + LeggedLab）。已执行本次巡检并输出报告。
 [2026-03-07 02:03:03 CST] Cron训练监控：检查 BeyondMimic/Tracking-Flat-G1-Wo-State-Estimation-v0 与 LeggedLab g1_flat 运行状态/ckpt/评估。
 [2026-03-07 02:03:09 CST] Cron训练监控：检查 BeyondMimic/Tracking-Flat-G1-Wo-State-Estimation-v0 与 LeggedLab g1_flat 运行状态/ckpt/评估。
+
+### 2026-03-08 09:30 Training Monitor Report
+- G1-Flat: Stopped (Mar 5)
+- g1_flat: Stopped (Mar 2)
+- Lexiang-Flat: Running (PID 671386), ~2960 step/h
+
+### 2026-06-14 MagicBot Z1 Fall Recovery Baseline
+- Current Z1 baseline: `logs/magicbot_z1_flat/2026-06-13_22-11-32_z1_flat_cmdslew2_1_2_alive0p02_speeddur2p5_cmdx-2p5_5_resume21600_env20000_20260613_220958/model_23000.pt`.
+- Baseline metrics at iteration 23000: reward `3.33`, episode length `888.78`, timeout ratio `0.7646`, head/shoulder contact ratio `0.0200`, speed failure ratio `0.2153`.
+- Reverted the failed `speed_tracking_duration_s=5.0` continuation and restored `speed_tracking_duration_s=2.5` in `magicbot_z1/z1_config.py`.
+- Deleted the degraded post-23000 continuation runs and their play/export logs. `model_23300.pt` was slightly worse than `model_23000.pt` and was not kept as a baseline.
+- Keep deploy YAML generation enabled during training with `--deploy_yaml_root=/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot`.
