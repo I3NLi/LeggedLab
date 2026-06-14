@@ -2706,3 +2706,42 @@ Stage2F export/play validation:
     `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2f_play_23550_cmdx3p0_4p25_env16_20260614_204622.out`
 - Visual acceptance is still pending human observation:
   - specifically check whether the robot starts cleanly, avoids head/shoulder diving near `3.5 m/s`, and preserves the more aggressive `4.25 m/s` stride seen in fixed-speed/gait eval.
+
+Stage2F command-profile rollout validation:
+
+- Added tool:
+  - `legged_lab/scripts/eval_command_profile.py`
+  - Purpose: evaluate start/accelerate/hold/decelerate behavior under a staged forward-speed profile, while reporting per-segment velocity tracking, tilt and reset reasons.
+  - Implementation note: velocity is read from critic observations and tilt is read from actor observations. Direct ArticulationData root/tilt reads were avoided because they can be brittle while other Isaac GUI play processes are running.
+- Smoke profile passed:
+  - log:
+    `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/eval_command_profile_smoke_23550_env4_v2.txt`
+  - profile: `3.0 -> 4.25 -> 3.0`, `4 envs`, short `1s` segments
+  - result: all segments completed with `0` resets.
+- Main profile:
+  - log:
+    `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/eval_command_profile_23550_3p0_4p25_3p0_env16_v2.txt`
+  - profile: warmup `1s @ 3.0`, then `3s @ 3.0`, `4s @ 4.25`, `3s @ 3.0`
+  - envs: `16`
+
+| segment | target | duration | mean vx | first 1s vx | last 1s vx | abs err | p90 abs vx | mean tilt xy | p90 tilt xy | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 3.00 | 3.0 | 2.7114 | 2.2088 | 3.0451 | 0.3825 | 3.1678 | 0.0570 | 0.1291 | 0 | 0 | 0 |
+| 1 | 4.25 | 4.0 | 3.7424 | 3.3346 | 3.9703 | 0.5085 | 4.1058 | 0.0439 | 0.0732 | 0 | 0 | 0 |
+| 2 | 3.00 | 3.0 | 3.2323 | 3.5066 | 3.0762 | 0.2575 | 3.6836 | 0.0360 | 0.0590 | 0 | 0 | 0 |
+
+Profile conclusion:
+
+- Stage2F accelerates cleanly from `3.0` toward `4.25` without reset in this profile.
+- It does not fully hit `4.25` in the 4-second segment, but the last-second mean reaches `3.9703 m/s`, which is better than the fixed-speed average and consistent with the gait eval improvement.
+- Deceleration back to `3.0` is controlled: last-second mean is `3.0762 m/s`, with no speed-tracking or head/shoulder reset.
+- This supports keeping Stage2F `model_23550.pt` as the current high-speed candidate.
+- Stage2G should still wait for visual feedback from the running Isaac play, because fixed-speed eval showed `3.5 m/s` head/shoulder resets that may be visually obvious even when the profile rollout is clean.
+
+Human visual play feedback:
+
+- User observed the running Isaac play and reported that the current Stage2F policy "runs very well".
+- This upgrades Stage2F `model_23550.pt` from a metrics-only candidate to the current visually accepted high-speed candidate.
+- Keep this checkpoint protected for the next stage:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/model_23550.pt`
+- Next training should build from Stage2F, still without widening beyond `3.0-4.25` until the `3.5 m/s` fixed-speed head/shoulder reset risk is reduced or confirmed harmless in repeated visual/profile tests.
