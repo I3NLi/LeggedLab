@@ -3685,3 +3685,51 @@ Stage2K play/export validation:
 - exported artifacts:
   - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-09-58_z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941/exported/policy.pt`
   - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-09-58_z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941/exported/policy.onnx`
+
+## Stage2L: stability anchor for the 4.0 m/s pocket
+
+Purpose:
+
+- Build from Stage2K `model_23650.pt`.
+- Keep the useful Stage2K gains at `4.25 m/s` and high-speed turning.
+- Repair Stage2K's weaker straight `4.0 m/s` eval, where short fixed-speed eval had more resets than Stage2J.
+- Do not widen the speed target yet; this is a stabilization stage before pushing toward `4.5-5.0 m/s`.
+
+Config changes:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2l_stabilityanchor`
+- base: `MagicBotZ1FlatSprintAMPStage2KMixedRetentionEnvCfg`
+- command range:
+  - `lin_vel_x=(3.4, 4.55)`
+  - `lin_vel_y=(-0.18, 0.18)`
+  - `ang_vel_z=(-0.32, 0.32)`
+- reference motion:
+  - `min_command_speed=3.4`
+  - `max_reference_speed=5.2`
+  - `speed_match_tolerance=0.75`
+- reward tuning:
+  - `track_lin_vel_xy_exp.weight=1.85`
+  - `track_lin_vel_xy_exp.std=1.05`
+  - `track_ang_vel_z_exp.weight=1.20`
+  - `track_ang_vel_z_exp.std=0.60`
+  - `forward_speed_progress.weight=0.26`
+  - `forward_speed_progress.min_command_x=3.4`
+- retained safety/regularization:
+  - `speed_tracking_duration_s=2.5`
+  - `energy.weight=-6e-4`
+  - `action_rate_l2.weight=-7.5e-3`
+  - head/shoulder contact termination and penalty unchanged from Stage2F+
+- agent:
+  - `learning_rate=2e-5`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.4`
+  - `save_interval=25`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- registry check passed:
+  - task resolves as `magicbot_z1_flat_sprint_amp_stage2l_stabilityanchor`
+  - command ranges, reward weights, AMP gate, and `speed_tracking_duration_s=2.5` match the intended Stage2L settings.
