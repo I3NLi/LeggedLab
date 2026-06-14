@@ -156,6 +156,72 @@ def joint_deviation_l1(env: BaseEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg(
     return torch.sum(torch.abs(angle), dim=1)
 
 
+def reference_joint_pos_exp(
+    env: BaseEnv,
+    std: float,
+    min_command_speed: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    reference_motion = getattr(env, "reference_motion", None)
+    if reference_motion is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    asset: Articulation = env.scene[asset_cfg.name]
+    current_joint_pos = env._tensor(asset.data.joint_pos)[:, asset_cfg.joint_ids]
+    reference_joint_pos = reference_motion.current_joint_pos[:, asset_cfg.joint_ids]
+    joint_pos_error = torch.mean(torch.square(current_joint_pos - reference_joint_pos), dim=1)
+    return torch.exp(-joint_pos_error / std**2) * _reference_motion_speed_gate(env, min_command_speed)
+
+
+def reference_joint_vel_exp(
+    env: BaseEnv,
+    std: float,
+    min_command_speed: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    reference_motion = getattr(env, "reference_motion", None)
+    if reference_motion is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    asset: Articulation = env.scene[asset_cfg.name]
+    current_joint_vel = env._tensor(asset.data.joint_vel)[:, asset_cfg.joint_ids]
+    reference_joint_vel = reference_motion.current_joint_vel[:, asset_cfg.joint_ids]
+    joint_vel_error = torch.mean(torch.square(current_joint_vel - reference_joint_vel), dim=1)
+    return torch.exp(-joint_vel_error / std**2) * _reference_motion_speed_gate(env, min_command_speed)
+
+
+def reference_body_relative_pos_exp(
+    env: BaseEnv,
+    std: float,
+    min_command_speed: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    reference_motion = getattr(env, "reference_motion", None)
+    if reference_motion is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    asset: Articulation = env.scene[asset_cfg.name]
+    body_pos_w = env._tensor(asset.data.body_pos_w)
+    body_quat_w = env._tensor(asset.data.body_quat_w)
+    anchor_id = reference_motion.anchor_body_id
+
+    robot_anchor_pos = body_pos_w[:, anchor_id]
+    robot_anchor_yaw = math_utils.yaw_quat(body_quat_w[:, anchor_id])
+    robot_body_rel = math_utils.quat_apply_inverse(
+        robot_anchor_yaw.unsqueeze(1).expand(-1, len(asset_cfg.body_ids), -1),
+        body_pos_w[:, asset_cfg.body_ids] - robot_anchor_pos.unsqueeze(1),
+    )
+
+    reference_body_pos_w = reference_motion.current_body_pos_w
+    reference_body_quat_w = reference_motion.current_body_quat_w
+    reference_anchor_pos = reference_body_pos_w[:, anchor_id]
+    reference_anchor_yaw = math_utils.yaw_quat(reference_body_quat_w[:, anchor_id])
+    reference_body_rel = math_utils.quat_apply_inverse(
+        reference_anchor_yaw.unsqueeze(1).expand(-1, len(asset_cfg.body_ids), -1),
+        reference_body_pos_w[:, asset_cfg.body_ids] - reference_anchor_pos.unsqueeze(1),
+    )
+
+    body_pos_error = torch.mean(torch.square(robot_body_rel - reference_body_rel), dim=(1, 2))
+    return torch.exp(-body_pos_error / std**2) * _reference_motion_speed_gate(env, min_command_speed)
+
+
 def body_orientation_l2(env: BaseEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     body_orientation = math_utils.quat_apply_inverse(
@@ -182,3 +248,8 @@ def feet_too_near_humanoid(
     feet_pos = env._tensor(asset.data.body_pos_w)[:, asset_cfg.body_ids, :]
     distance = torch.norm(feet_pos[:, 0] - feet_pos[:, 1], dim=-1)
     return (threshold - distance).clamp(min=0)
+
+
+def _reference_motion_speed_gate(env: BaseEnv, min_command_speed: float) -> torch.Tensor:
+    command_speed = torch.norm(env._command_tensor()[:, :2], dim=1)
+    return (command_speed >= float(min_command_speed)).float()

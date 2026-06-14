@@ -26,6 +26,7 @@ from isaaclab.utils.buffers import CircularBuffer, DelayBuffer
 from rsl_rl.env import VecEnv
 
 from legged_lab.envs.base.base_env_config import BaseEnvCfg
+from legged_lab.utils.reference_motion import ReferenceMotion
 from legged_lab.utils.env_utils.scene import SceneCfg
 
 try:
@@ -138,6 +139,7 @@ class BaseEnv(VecEnv):
             self.immediate_termination_contact_cfg.resolve(self.scene)
         self.feet_cfg = SceneEntityCfg(name="contact_sensor", body_names=self.cfg.robot.feet_body_names)
         self.feet_cfg.resolve(self.scene)
+        self.reference_motion = self._init_reference_motion()
 
         self.obs_scales = self.cfg.normalization.obs_scales
         self.add_noise = self.cfg.noise.add_noise
@@ -157,6 +159,7 @@ class BaseEnv(VecEnv):
         )
         self._reset_reason_body_contact_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._reset_reason_speed_tracking_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self.reset_env_ids = torch.empty(0, dtype=torch.long, device=self.device)
         self._root_height_command = self._resolve_root_height_command()
         self._root_height_command_buf = torch.full(
             (self.num_envs, 1), self._root_height_command, device=self.device
@@ -180,6 +183,21 @@ class BaseEnv(VecEnv):
             "Config/command_slew_rate_y": float(self._command_slew_rate[1].item()),
             "Config/command_slew_rate_yaw": float(self._command_slew_rate[2].item()),
         }
+        if self.reference_motion is not None:
+            self._static_log_info.update(
+                {
+                    "Config/reference_motion_enabled": 1.0,
+                    "Config/reference_motion_fps": float(self.reference_motion.fps),
+                    "Config/reference_motion_frames": float(self.reference_motion.num_frames),
+                    "Config/reference_motion_min_speed": float(self.reference_motion.min_command_speed),
+                    "Config/reference_motion_max_speed": float(
+                        self.reference_motion.anchor_speed.max().item()
+                    ),
+                    "Config/reference_motion_amp_obs_dim": float(
+                        self.reference_motion.amp_observation_dim
+                    ),
+                }
+            )
         self._episode_len_curriculum_round = 0
         self._episode_len_curriculum_sum = 0.0
         self._episode_len_curriculum_count = 0
@@ -204,6 +222,43 @@ class BaseEnv(VecEnv):
 
             self._velocity_debug_draw = omni_debug_draw.acquire_debug_draw_interface()
         self.init_obs_buffer()
+
+    def _init_reference_motion(self):
+        cfg = self.cfg.reference_motion
+        if not bool(cfg.enable):
+            return None
+
+        robot_joint_names = list(
+            self.robot.joint_names if hasattr(self.robot, "joint_names") else self.robot.data.joint_names
+        )
+        robot_body_names = list(
+            self.robot.body_names if hasattr(self.robot, "body_names") else self.robot.data.body_names
+        )
+        return ReferenceMotion(
+            motion_file=str(cfg.motion_file),
+            robot_joint_names=robot_joint_names,
+            robot_body_names=robot_body_names,
+            num_envs=self.num_envs,
+            device=self.device,
+            anchor_body_name=str(cfg.anchor_body_name),
+            amp_key_body_names=list(cfg.amp_key_body_names),
+            reward_body_names=list(cfg.reward_body_names),
+            min_command_speed=float(cfg.min_command_speed),
+            max_reference_speed=float(cfg.max_reference_speed),
+            speed_match_tolerance=float(cfg.speed_match_tolerance),
+            speed_sample_jitter_frames=int(cfg.speed_sample_jitter_frames),
+            amp_observation_history_length=int(cfg.amp_observation_history_length),
+        )
+
+    def _reset_reference_motion(self, env_ids):
+        if self.reference_motion is None or len(env_ids) == 0:
+            return
+        self.reference_motion.reset(env_ids, command_xy=self._command_tensor()[:, :2])
+
+    def _update_reference_motion(self):
+        if self.reference_motion is None:
+            return
+        self.reference_motion.update(self._command_tensor()[:, :2], self.step_dt)
 
     def compute_current_observations(self):
         robot = self.robot
@@ -307,6 +362,7 @@ class BaseEnv(VecEnv):
         self.command_generator.reset(env_ids)
         if self._command_slew_enabled:
             self._command_buf[env_ids] = 0.0
+        self._reset_reference_motion(env_ids)
         self._resample_obs_bias(env_ids)
         self.actor_obs_buffer.reset(env_ids)
         self.critic_obs_buffer.reset(env_ids)
@@ -345,6 +401,7 @@ class BaseEnv(VecEnv):
 
         self.episode_length_buf += 1
         self._compute_command_generator()
+        self._update_reference_motion()
         self._draw_velocity_debug_arrows()
         if "interval" in self.event_manager.available_modes:
             self.event_manager.apply(mode="interval", dt=self.step_dt)
@@ -358,6 +415,7 @@ class BaseEnv(VecEnv):
         reward_buf = self.reward_manager.compute(self.step_dt)
         self.episode_reward_buf += reward_buf
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
+        self.reset_env_ids = env_ids
         self.reset(env_ids)
 
         actor_obs, critic_obs = self.compute_observations()
@@ -939,6 +997,25 @@ class BaseEnv(VecEnv):
         if self._rsl_rl_uses_tensordict_obs:
             return self._obs_tensor_dict(actor_obs, critic_obs)
         return actor_obs, self.extras
+
+    def get_amp_observations(self) -> torch.Tensor:
+        if self.reference_motion is None:
+            raise RuntimeError("Reference motion is disabled; AMP observations are not available.")
+        return self.reference_motion.build_amp_observations(
+            self._tensor(self.robot.data.joint_pos),
+            self._tensor(self.robot.data.joint_vel),
+            self._tensor(self.robot.data.body_pos_w),
+            self._tensor(self.robot.data.body_quat_w),
+            self._tensor(self.robot.data.body_lin_vel_w),
+            self._tensor(self.robot.data.body_ang_vel_w),
+        )
+
+    def collect_reference_amp_observations(
+        self, num_samples: int, num_frames: int | None = None
+    ) -> torch.Tensor:
+        if self.reference_motion is None:
+            raise RuntimeError("Reference motion is disabled; expert AMP observations are not available.")
+        return self.reference_motion.sample_expert_amp_observations(num_samples, num_frames=num_frames)
 
     def _obs_tensor_dict(self, actor_obs, critic_obs):
         if TensorDict is None:

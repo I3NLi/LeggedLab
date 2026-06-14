@@ -15,6 +15,37 @@ from legged_lab.envs.g1.g1_config import G1FlatAgentCfg, G1FlatEnvCfg, G1RoughAg
 FOOT_BODY_NAMES = ["left_ankle_roll_link", "right_ankle_roll_link"]
 NON_FOOT_CONTACT_BODY_NAMES = [r"^(?!left_ankle_roll_link$)(?!right_ankle_roll_link$).+"]
 HEAD_SHOULDER_CONTACT_BODY_NAMES = [".*head.*", ".*shoulder.*"]
+SPRINT1_SUBJECT2_MOTION_FILE = (
+    "/home/hiyio/whole_body_tracking/motions/magicbot_z1/collected/sprint1_subject2_magicbot_z1.npz"
+)
+SPRINT_REFERENCE_BODY_NAMES = [
+    "left_knee_link",
+    "right_knee_link",
+    "left_ankle_roll_link",
+    "right_ankle_roll_link",
+    "left_elbow_link",
+    "right_elbow_link",
+    "left_wrist_yaw_link",
+    "right_wrist_yaw_link",
+]
+SPRINT_AMP_KEY_BODY_NAMES = [
+    "left_ankle_roll_link",
+    "right_ankle_roll_link",
+    "left_wrist_yaw_link",
+    "right_wrist_yaw_link",
+]
+SPRINT_REFERENCE_JOINT_NAMES = [
+    ".*_hip_pitch_joint",
+    ".*_hip_roll_joint",
+    ".*_hip_yaw_joint",
+    ".*_knee_joint",
+    ".*_ankle_pitch_joint",
+    ".*_shoulder_pitch_joint",
+    ".*_shoulder_roll_joint",
+    ".*_shoulder_yaw_joint",
+    ".*_elbow_joint",
+    ".*_wrist_yaw_joint",
+]
 
 
 @configclass
@@ -104,6 +135,37 @@ class MagicBotZ1RewardCfg(RewardCfg):
     )
 
 
+@configclass
+class MagicBotZ1SprintBridgeRewardCfg(MagicBotZ1RewardCfg):
+    sprint_reference_joint_pos = RewTerm(
+        func=mdp.reference_joint_pos_exp,
+        weight=0.03,
+        params={
+            "std": 0.65,
+            "min_command_speed": 2.0,
+            "asset_cfg": SceneEntityCfg("robot", joint_names=SPRINT_REFERENCE_JOINT_NAMES),
+        },
+    )
+    sprint_reference_joint_vel = RewTerm(
+        func=mdp.reference_joint_vel_exp,
+        weight=0.01,
+        params={
+            "std": 5.0,
+            "min_command_speed": 2.0,
+            "asset_cfg": SceneEntityCfg("robot", joint_names=SPRINT_REFERENCE_JOINT_NAMES),
+        },
+    )
+    sprint_reference_body_relative_pos = RewTerm(
+        func=mdp.reference_body_relative_pos_exp,
+        weight=0.06,
+        params={
+            "std": 0.40,
+            "min_command_speed": 2.0,
+            "asset_cfg": SceneEntityCfg("robot", body_names=SPRINT_REFERENCE_BODY_NAMES),
+        },
+    )
+
+
 def _apply_magicbot_z1_upstream_commands(env_cfg) -> None:
     env_cfg.episode_length_curriculum.enable = False
     env_cfg.episode_length_curriculum.stages = []
@@ -143,6 +205,19 @@ def _apply_magicbot_z1_upstream_reward_weights(env_cfg) -> None:
     env_cfg.reward.joint_deviation_hip.weight = -0.15
     env_cfg.reward.joint_deviation_arms.weight = -0.2
     env_cfg.reward.joint_deviation_legs.weight = -0.02
+
+
+def _apply_magicbot_z1_sprint_reference_motion(env_cfg) -> None:
+    env_cfg.reference_motion.enable = True
+    env_cfg.reference_motion.motion_file = SPRINT1_SUBJECT2_MOTION_FILE
+    env_cfg.reference_motion.anchor_body_name = "torso_link"
+    env_cfg.reference_motion.amp_key_body_names = list(SPRINT_AMP_KEY_BODY_NAMES)
+    env_cfg.reference_motion.reward_body_names = list(SPRINT_REFERENCE_BODY_NAMES)
+    env_cfg.reference_motion.min_command_speed = 2.0
+    env_cfg.reference_motion.max_reference_speed = 5.8
+    env_cfg.reference_motion.speed_match_tolerance = 0.75
+    env_cfg.reference_motion.speed_sample_jitter_frames = 32
+    env_cfg.reference_motion.amp_observation_history_length = 2
 
 
 def _apply_magicbot_z1_overrides(env_cfg) -> None:
@@ -253,9 +328,94 @@ class MagicBotZ1FlatEnvCfg(G1FlatEnvCfg):
 
 
 @configclass
+class MagicBotZ1FlatSprintBridgeEnvCfg(MagicBotZ1FlatEnvCfg):
+    reward = MagicBotZ1SprintBridgeRewardCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        _apply_magicbot_z1_sprint_reference_motion(self)
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPEnvCfg(MagicBotZ1FlatEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        _apply_magicbot_z1_sprint_reference_motion(self)
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage1AEnvCfg(MagicBotZ1FlatSprintAMPEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.ranges.lin_vel_x = (-2.5, 3.0)
+        self.reference_motion.max_reference_speed = 3.6
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage1BEnvCfg(MagicBotZ1FlatSprintAMPEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.ranges.lin_vel_x = (-2.5, 3.5)
+        self.reference_motion.max_reference_speed = 4.0
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage1CEnvCfg(MagicBotZ1FlatSprintAMPEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.ranges.lin_vel_x = (-2.5, 3.75)
+        self.reference_motion.max_reference_speed = 4.2
+        self.reward.track_lin_vel_xy_exp.weight = 1.25
+
+
+@configclass
 class MagicBotZ1FlatAgentCfg(G1FlatAgentCfg):
     experiment_name: str = "magicbot_z1_flat"
     wandb_project: str = "magicbot_z1_flat"
+
+
+@configclass
+class MagicBotZ1FlatSprintBridgeAgentCfg(MagicBotZ1FlatAgentCfg):
+    run_name: str = "z1_sprint_bridge_sprint1_subject2"
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPAgentCfg(MagicBotZ1FlatAgentCfg):
+    run_name: str = "z1_sprint_amp_sprint1_subject2"
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.motion_prior.enable = True
+        self.motion_prior.num_frames = 2
+        self.motion_prior.replay_buffer_size = 200_000
+        self.motion_prior.reward_coef = 0.15
+        self.motion_prior.reward_min_command_speed = 2.0
+        self.motion_prior.discriminator_hidden_dims = [256, 128]
+        self.motion_prior.discriminator_learning_rate = 1.0e-4
+        self.motion_prior.discriminator_weight_decay = 1.0e-4
+        self.motion_prior.grad_penalty_coef = 5.0
+        self.motion_prior.use_spectral_norm = True
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage1AAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = "z1_sprint_amp_stage1a_cmdx-2p5_3p0_ref2p0_3p6"
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage1BAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = "z1_sprint_amp_stage1b_cmdx-2p5_3p5_ref2p0_4p0"
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage1CAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = "z1_sprint_amp_stage1c_retention_cmdx-2p5_3p75_ref2p0_4p2"
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.learning_rate = 5.0e-4
+        self.motion_prior.reward_coef = 0.10
+        self.save_interval = 25
 
 
 @configclass

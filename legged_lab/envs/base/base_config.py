@@ -72,6 +72,20 @@ class RobotCfg:
 
 
 @configclass
+class ReferenceMotionCfg:
+    enable: bool = False
+    motion_file: str = ""
+    anchor_body_name: str = "torso_link"
+    amp_key_body_names: list = []
+    reward_body_names: list = []
+    min_command_speed: float = 2.0
+    max_reference_speed: float = 5.5
+    speed_match_tolerance: float = 0.75
+    speed_sample_jitter_frames: int = 24
+    amp_observation_history_length: int = 2
+
+
+@configclass
 class ObsScalesCfg:
     lin_vel: float = 1.0
     ang_vel: float = 1.0

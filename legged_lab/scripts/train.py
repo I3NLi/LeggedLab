@@ -15,6 +15,7 @@ import argparse
 from isaaclab.app import AppLauncher
 from rsl_rl.runners import OnPolicyRunner
 
+from legged_lab.amp import AMPOnPolicyRunner
 from legged_lab.utils import task_registry
 
 # local imports
@@ -103,7 +104,11 @@ def train():
     if agent_cfg.run_name:
         log_dir += f"_{agent_cfg.run_name}"
     log_dir = os.path.join(log_root_path, log_dir)
-    runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+    motion_prior_cfg = getattr(agent_cfg, "motion_prior", None)
+    motion_prior_enabled = bool(getattr(motion_prior_cfg, "enable", False))
+    runner_cls = AMPOnPolicyRunner if motion_prior_enabled else OnPolicyRunner
+    print(f"[INFO] Motion prior AMP runner: {motion_prior_enabled}")
+    runner = runner_cls(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
     if agent_cfg.resume:
         # get path to previous checkpoint
         resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
