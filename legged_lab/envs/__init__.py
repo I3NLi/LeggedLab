@@ -43,6 +43,8 @@ from legged_lab.envs.magicbot_z1.z1_config import (
     MagicBotZ1FlatSprintAMPStage1BEnvCfg,
     MagicBotZ1FlatSprintAMPStage1CAgentCfg,
     MagicBotZ1FlatSprintAMPStage1CEnvCfg,
+    MagicBotZ1FlatSprintAMPStage2AAgentCfg,
+    MagicBotZ1FlatSprintAMPStage2AEnvCfg,
     MagicBotZ1FlatSprintBridgeAgentCfg,
     MagicBotZ1FlatSprintBridgeEnvCfg,
     MagicBotZ1RoughAgentCfg,
@@ -87,5 +89,11 @@ task_registry.register(
     BaseEnv,
     MagicBotZ1FlatSprintAMPStage1CEnvCfg(),
     MagicBotZ1FlatSprintAMPStage1CAgentCfg(),
+)
+task_registry.register(
+    "magicbot_z1_flat_sprint_amp_stage2a",
+    BaseEnv,
+    MagicBotZ1FlatSprintAMPStage2AEnvCfg(),
+    MagicBotZ1FlatSprintAMPStage2AAgentCfg(),
 )
 task_registry.register("magicbot_z1_rough", BaseEnv, MagicBotZ1RoughEnvCfg(), MagicBotZ1RoughAgentCfg())

@@ -1377,3 +1377,59 @@ Note:
   - commit: `60cc7b9 Update Z1 loco policy to Stage1C sprint checkpoint`
   - scope: only the two loco YAML files and three policy artifact files were committed.
   - push status: not pushed, because the current branch has no matching remote branch.
+
+## Stage2A Prepared Config
+
+Date: `2026-06-14`
+
+Reason:
+
+- Stage1C `model_23400.pt` is the current best candidate for `2.5-3.5 m/s`.
+- `4.0 m/s` improved but is still exploratory, so the next speed expansion should be smaller than a full `4-5 m/s` jump.
+- Stage2A is prepared as a conservative entry into Stage 2, but should not be launched until Stage1C play posture is visually accepted.
+
+Task:
+
+- `magicbot_z1_flat_sprint_amp_stage2a`
+
+Prepared config:
+
+- command `lin_vel_x`: `(-2.5, 4.25)`
+- reference motion `min_command_speed`: `2.0`
+- reference motion `max_reference_speed`: `4.8`
+- velocity tracking reward weight: `1.35`
+- `speed_tracking_duration_s`: `2.5`
+- AMP reward coefficient: `0.08`
+- learning rate: `3.0e-4`
+- save interval: `25`
+- run name base: `z1_sprint_amp_stage2a_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- AppLauncher registry check passed:
+  - task registered: `magicbot_z1_flat_sprint_amp_stage2a`
+  - `lin_vel_x=(-2.5, 4.25)`
+  - `max_reference_speed=4.8`
+  - `motion_prior_enable=True`
+  - `motion_prior_reward_coef=0.08`
+  - `learning_rate=0.0003`
+
+Suggested launch if Stage1C play is visually acceptable:
+
+```bash
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python -u legged_lab/scripts/train.py \
+  --task=magicbot_z1_flat_sprint_amp_stage2a \
+  --num_envs=10000 \
+  --max_iterations=101 \
+  --run_name=z1_sprint_amp_stage2a_from23400_cmdx-2p5_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env10000_YYYYMMDD_HHMMSS \
+  --logger=tensorboard \
+  --resume=True \
+  --load_run=2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801 \
+  --checkpoint=model_23400.pt \
+  --headless \
+  --deploy_yaml_root=/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot
+```
