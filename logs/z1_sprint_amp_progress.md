@@ -1283,3 +1283,33 @@ Current Stage1 selection:
 - keep stable Stage1A reference: `model_23300.pt`
 - keep Stage1C backup: `model_23350.pt`
 - next recommended action: play `model_23400.pt` with command range `-2.5..4.0`, then export/update deploy artifacts only if visual gait is acceptable.
+
+## Play Check: Stage1C 23400
+
+Date: `2026-06-14`
+
+Command summary:
+
+- task: `magicbot_z1_flat_sprint_amp_stage1c`
+- checkpoint: `model_23400.pt`
+- envs: `50`
+- command range: `lin_vel_x=(-2.5, 4.0)`, `lin_vel_y=0.0`, `ang_vel_z=0.0`
+- velocity debug visualization: enabled
+
+Status:
+
+- PID: `789481`
+- log: `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_play_stage1c_23400_cmdx-2p5_4p0_20260614_1720.out`
+- command range confirmed in log.
+- actor observation dim confirmed: `82`
+- critic observation dim confirmed: `87`
+- exported artifacts:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/exported/policy.pt`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/exported/policy.onnx`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/exported/policy.onnx.data`
+
+To stop this play:
+
+```bash
+kill 789481
+```
