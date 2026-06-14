@@ -2855,3 +2855,160 @@ Stage2G conclusion:
 - Current primary candidate remains the visually accepted Stage2F checkpoint:
   `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/model_23550.pt`
 - Do not continue widening speed range from Stage2G until a visual play check confirms it preserves the good Stage2F gait.
+
+Stage2H speed-extend design:
+
+- Task:
+  `magicbot_z1_flat_sprint_amp_stage2h_speedextend`
+- Purpose:
+  take the visually accepted Stage2F policy and make only a small speed-range extension toward Stage 2's `4-5 m/s` goal.
+- Training start:
+  Stage2F `model_23550.pt`
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/model_23550.pt`
+- Protected primary candidate:
+  keep Stage2F `model_23550.pt` as the current human-accepted baseline until Stage2H has both metrics and visual confirmation.
+- Changes versus Stage2F:
+  - `lin_vel_x=(3.0, 4.5)` from `(3.0, 4.25)`
+  - `reference_motion.max_reference_speed=5.0` from `4.8`
+  - `reference_motion.speed_match_tolerance=0.6` from `0.5`
+  - `track_lin_vel_xy_exp.std=0.8` from `0.75`
+  - `forward_speed_progress.weight=0.32` from `0.30`
+  - `learning_rate=0.00005`
+- Unchanged safety/behavior constraints:
+  - `speed_tracking_duration_s=2.5`
+  - `head_shoulder_contact_termination_penalty.weight=-240.0`
+  - `body_orientation_l2.weight=-2.5`
+  - `flat_orientation_l2.weight=-1.2`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.0`
+- Rationale:
+  - Stage2F already looks good in play, so this stage deliberately avoids a large jump to `5+ m/s`.
+  - The velocity reward std/tolerance is slightly relaxed so the policy can learn into `4.5 m/s` without being immediately dominated by high-speed tracking failure.
+  - The run should be short and checkpointed before deciding whether to continue.
+- Config validation:
+  - `py_compile` passed for `z1_config.py` and task registry.
+  - AppLauncher registry check passed:
+    - registered: `True`
+    - `lin_vel_x=(3.0, 4.5)`
+    - `lin_vel_y=(-0.1, 0.1)`
+    - `ang_vel_z=(-0.25, 0.25)`
+    - `heading_command=False`
+    - `speed_tracking_duration_s=2.5`
+    - reference min/max/tolerance: `3.0 / 5.0 / 0.6`
+    - track velocity reward: weight `1.35`, std `0.8`
+    - progress reward: `0.32`
+    - head/shoulder penalty: `-240.0`
+    - AMP enabled: `True`, coef `0.08`, min speed `3.0`
+    - learning rate: `5e-05`
+    - save interval: `25`
+- Smoke startup:
+  - envs: `32`
+  - max iterations: `1`
+  - start checkpoint: Stage2F `model_23550.pt`
+  - stdout log:
+    `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2h_speedextend_smoke_fromstage2f23550_env32_20260614_213931.out`
+  - smoke run directory:
+    `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_21-39-43_z1_sprint_amp_stage2h_speedextend_smoke_fromstage2f23550_env32_20260614_213931`
+  - startup produced params, tensorboard event file and loaded checkpoint copy; treat this as config/startup smoke only, not a meaningful training result.
+
+Stage2H formal run:
+
+- Initial 4096-env attempt:
+  - run name:
+    `z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env4096_20260614_214154`
+  - run directory:
+    `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_21-42-18_z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env4096_20260614_214154`
+  - stdout:
+    `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env4096_20260614_214154.out`
+  - result:
+    failed with CUDA OOM during the first PPO update.
+  - cause:
+    another rough dog training process was using about `24.9 GB`; Z1 had about `5.0 GB` allocated and only about `54 MB` free at the OOM point.
+  - action:
+    do not use this failed run as a policy result.
+- Successful constrained-resource run:
+
+```bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2h_speedextend \
+  --num_envs 2048 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431 \
+  --checkpoint model_23550.pt \
+  --max_iterations 26 \
+  --run_name z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env2048_20260614_214310 \
+  --logger tensorboard \
+  --deploy_yaml_root /home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env2048_20260614_214310
+```
+
+Run artifacts:
+
+- stdout log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env2048_20260614_214310.out`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_21-43-28_z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env2048_20260614_214310`
+- deploy snapshot:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env2048_20260614_214310/policies/loco_mode/config/LocoMode.yaml`
+- checkpoints:
+  - `model_23550.pt`
+  - `model_23575.pt`
+- fixed-speed eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_21-43-28_z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env2048_20260614_214310/eval_fixed_speed_23575_env128_3p5_4p5.txt`
+- command-profile eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_21-43-28_z1_sprint_amp_stage2h_speedextend_fromstage2f23550_cmdx3p0_4p5_ref3p0_5p0_prog0p32_amp0p08_lr5e-5_save25_env2048_20260614_214310/eval_command_profile_23575_3p0_4p5_3p0_env16.txt`
+
+Final online indicators at `model_23575.pt`:
+
+- mean reward: `1.43`
+- mean episode length: `577.42`
+- timeout ratio: `0.9396`
+- head/shoulder contact ratio: `0.0604`
+- body contact ratio: `0.0`
+- speed tracking failure ratio: `0.0`
+- track linear velocity reward contribution: `0.6171`
+- forward speed progress reward contribution: `0.1558`
+
+Fixed-speed eval, strict conditions (`num_envs=128`, `duration=8`, `warmup=3`):
+
+| checkpoint | target | mean vx | abs err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2F 23550 | 3.50 | 3.4686 | 0.1545 | 3 | 2 | 1 |
+| Stage2H 23575 | 3.50 | 3.5110 | 0.1454 | 5 | 4 | 1 |
+| Stage2F 23550 | 4.00 | 3.6600 | 0.3730 | 10 | 4 | 6 |
+| Stage2H 23575 | 4.00 | 3.6093 | 0.4329 | 14 | 4 | 10 |
+| Stage2F 23550 | 4.25 | 3.4479 | 0.8131 | 29 | 8 | 21 |
+| Stage2H 23575 | 4.25 | 3.5673 | 0.7008 | 25 | 8 | 17 |
+| Stage2H 23575 | 4.50 | 2.8996 | 1.6029 | 78 | 18 | 60 |
+
+Command-profile eval (`3.0 -> 4.5 -> 3.0`, `16 envs`, warmup `1s @ 3.0`):
+
+| segment | target | duration | mean vx | first 1s vx | last 1s vx | abs err | p90 abs vx | mean tilt xy | p90 tilt xy | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 3.00 | 3.0 | 2.7715 | 2.2846 | 3.0976 | 0.3780 | 3.2249 | 0.0564 | 0.1414 | 0 | 0 | 0 |
+| 1 | 4.50 | 4.0 | 3.8389 | 3.3752 | 4.1076 | 0.6612 | 4.2552 | 0.0477 | 0.0786 | 0 | 0 | 0 |
+| 2 | 3.00 | 3.0 | 3.3162 | 3.6297 | 3.1301 | 0.3264 | 3.8030 | 0.0360 | 0.0606 | 0 | 0 | 0 |
+
+Stage2H conclusion:
+
+- Stage2H is not a new primary candidate yet.
+- Positive:
+  - It improves strict `4.25 m/s` tracking versus Stage2F:
+    - mean vx `3.4479 -> 3.5673`
+    - abs err `0.8131 -> 0.7008`
+    - resets `29 -> 25`
+    - speed-tracking resets `21 -> 17`
+  - It completes the `3.0 -> 4.5 -> 3.0` command profile with `0` resets and reaches `4.1076 m/s` in the last second of the `4.5` segment.
+- Negative:
+  - Fixed `4.5 m/s` is not stable: `78/128` resets, mostly speed tracking.
+  - `4.0 m/s` strict eval regresses versus Stage2F.
+  - `3.5 m/s` speed is slightly better but reset/head contact count is worse.
+- Current ranking:
+  - primary human-accepted candidate: Stage2F `model_23550.pt`
+  - secondary high-speed experiment: Stage2H `model_23575.pt`
+- Next step:
+  - do not deploy Stage2H before visual play.
+  - if continuing training from Stage2H, do not widen speed further; instead stabilize `4.0-4.5` and reduce speed-tracking resets.
+  - if choosing a deployment/play candidate right now, prefer Stage2F because it is visually accepted.
