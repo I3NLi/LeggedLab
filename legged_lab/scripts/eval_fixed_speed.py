@@ -82,6 +82,7 @@ def _build_env_and_policy():
     env.command_metrics_enabled = False
     if hasattr(env.robot, "root_view"):
         env.robot.data._root_view = env.robot.root_view
+    _install_reset_reason_counter(env)
 
     log_root_path = os.path.abspath(os.path.join("logs", agent_cfg.experiment_name))
     resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
@@ -93,12 +94,60 @@ def _build_env_and_policy():
     return env, policy
 
 
+def _zero_reset_reason_counts():
+    return {
+        "timeout_resets": 0,
+        "head_shoulder_resets": 0,
+        "body_contact_resets": 0,
+        "speed_tracking_resets": 0,
+        "other_resets": 0,
+    }
+
+
+def _install_reset_reason_counter(env):
+    if not hasattr(env, "_log_reset_reasons") or getattr(env, "_eval_reset_reason_counter_installed", False):
+        return
+
+    original_log_reset_reasons = env._log_reset_reasons
+    env._eval_reset_reason_totals = _zero_reset_reason_counts()
+
+    def _counting_log_reset_reasons(env_ids):
+        original_log_reset_reasons(env_ids)
+        totals = getattr(env, "_eval_reset_reason_totals", None)
+        if totals is None:
+            return
+        log = env.extras.get("log", {})
+        totals["timeout_resets"] += int(round(float(log.get("Reset/timeout_count", 0.0))))
+        totals["head_shoulder_resets"] += int(round(float(log.get("Reset/head_shoulder_contact_count", 0.0))))
+        totals["body_contact_resets"] += int(round(float(log.get("Reset/body_contact_count", 0.0))))
+        totals["speed_tracking_resets"] += int(round(float(log.get("Reset/speed_tracking_failure_count", 0.0))))
+        totals["other_resets"] += int(round(float(log.get("Reset/other_count", 0.0))))
+
+    env._log_reset_reasons = _counting_log_reset_reasons
+    env._eval_reset_reason_counter_installed = True
+
+
+def _reset_reason_counts(env):
+    totals = getattr(env, "_eval_reset_reason_totals", None)
+    if totals is None:
+        return {
+            "timeout_resets": 0,
+            "head_shoulder_resets": 0,
+            "body_contact_resets": 0,
+            "speed_tracking_resets": 0,
+            "other_resets": 0,
+        }
+    return dict(totals)
+
+
 def _run_one_speed(env, policy, vx: float):
     env_ids = torch.arange(env.num_envs, device=env.device)
     env.reset(env_ids)
     obs = env.get_observations()
     if isinstance(obs, tuple):
         obs, _ = obs
+    if hasattr(env, "_eval_reset_reason_totals"):
+        env._eval_reset_reason_totals = _zero_reset_reason_counts()
 
     warmup_steps = int(args_cli.warmup / env.step_dt)
     sample_steps = int(args_cli.duration / env.step_dt)
@@ -120,6 +169,7 @@ def _run_one_speed(env, policy, vx: float):
                 samples.extend(_critic_body_frame_vx(env, extras).detach().float().cpu().tolist())
 
     print(f"[INFO] Finished target={vx:.3f}", flush=True)
+    reset_reasons = _reset_reason_counts(env)
 
     if not samples:
         return {
@@ -130,6 +180,7 @@ def _run_one_speed(env, policy, vx: float):
             "p50_vx": 0.0,
             "p90_abs_vx": 0.0,
             "resets": resets,
+            **reset_reasons,
         }
 
     abs_samples = sorted(abs(value) for value in samples)
@@ -142,6 +193,7 @@ def _run_one_speed(env, policy, vx: float):
         "p50_vx": statistics.median(samples),
         "p90_abs_vx": abs_samples[p90_idx],
         "resets": resets,
+        **reset_reasons,
     }
 
 

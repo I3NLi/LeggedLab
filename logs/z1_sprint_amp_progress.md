@@ -2240,3 +2240,169 @@ Conclusion:
 - Next attempt should combine the two:
   - continue from Stage2C-forward `23475` for a very short run only if validating `4.0` style;
   - or restart from Stage2A `23425` with forward-focus but add a gentler high-speed curriculum instead of immediately evaluating/forcing `4.25+`.
+
+## Stage2D High-Reference Sprint AMP
+
+Date: `2026-06-14`
+
+Reason:
+
+- Stage2B and Stage2C showed that broadening command range alone is not enough for `4.25 m/s`.
+- `sprint1_subject2` speed distribution is heavily skewed to low speed:
+  - total frames: `13657`
+  - duration: `273.14 s`
+  - mean speed: `1.133 m/s`
+  - max speed: `5.249 m/s`
+  - frames `3.5-4.0`: `715` (`5.24%`)
+  - frames `4.0-4.25`: `306` (`2.24%`)
+  - frames `4.25-4.5`: `244` (`1.79%`)
+  - frames `4.5-4.75`: `150` (`1.10%`)
+  - frames `4.75-5.0`: `57` (`0.42%`)
+- Existing AMP expert sampler draws uniformly from eligible frames, so the high-speed sprint prior is sparse unless the eligible range is narrowed.
+
+Config:
+
+- New task: `magicbot_z1_flat_sprint_amp_stage2d_highref`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_19-23-39_z1_sprint_amp_stage2c_forward_from23425_cmdx0_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env4096_20260614_192309/model_23475.pt`
+- `lin_vel_x`: `(2.5, 4.25)`
+- `lin_vel_y`: `(-0.15, 0.15)`
+- `ang_vel_z`: `(-0.3, 0.3)`
+- standing env ratio: `0.0`
+- heading command: `False`
+- `reference_motion.min_command_speed`: `3.0`
+- `reference_motion.max_reference_speed`: `4.8`
+- `reference_motion.speed_match_tolerance`: `0.5`
+- `motion_prior.reward_min_command_speed`: `3.0`
+- AMP reward coefficient: `0.08`
+- learning rate: `2.0e-4`
+- save interval: `25`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+  - `legged_lab/scripts/eval_fixed_speed.py`
+- AppLauncher registry check passed:
+  - task registered: `magicbot_z1_flat_sprint_amp_stage2d_highref`
+  - `lin_vel_x=(2.5, 4.25)`
+  - `reference_min_command_speed=3.0`
+  - `motion_prior_reward_min_command_speed=3.0`
+  - `learning_rate=0.0002`
+- Smoke training passed:
+  - envs: `64`
+  - max iterations: `1`
+  - loaded Stage2C-forward `model_23475.pt`
+  - actor shape: `82 -> 24`
+  - critic shape: `87 -> 1`
+  - AMP runner: enabled
+  - log confirmed `Config/reference_motion_min_speed=3.0000`
+
+Eval tool update:
+
+- `legged_lab/scripts/eval_fixed_speed.py` now reports reset reasons per fixed-speed target:
+  - `timeout_resets`
+  - `head_shoulder_resets`
+  - `body_contact_resets`
+  - `speed_tracking_resets`
+  - `other_resets`
+- Implementation note:
+  - The evaluator wraps `env._log_reset_reasons()` and accumulates counts at the moment the environment records reset reasons.
+  - Directly reading reset buffers after `env.step()` was not reliable because reset can clear those buffers.
+
+Formal run:
+
+```bash
+OMNI_KIT_ACCEPT_EULA=YES \
+PYTHONNOUSERSITE=1 \
+PYTHONPATH=/home/hiyio/LeggedLab \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python -u legged_lab/scripts/train.py \
+  --task=magicbot_z1_flat_sprint_amp_stage2d_highref \
+  --num_envs=4096 \
+  --max_iterations=26 \
+  --run_name=z1_sprint_amp_stage2d_highref_fromstage2c23475_cmdx2p5_4p25_ref3p0_4p8_amp0p08_lr2e-4_save25_env4096_20260614_194056 \
+  --logger=tensorboard \
+  --resume=True \
+  --load_run=2026-06-14_19-23-39_z1_sprint_amp_stage2c_forward_from23425_cmdx0_4p25_ref2p0_4p8_amp0p08_lr3e-4_save25_env4096_20260614_192309 \
+  --checkpoint=model_23475.pt \
+  --headless \
+  --deploy_yaml_root=/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2d_highref_fromstage2c23475_cmdx2p5_4p25_ref3p0_4p8_amp0p08_lr2e-4_save25_env4096_20260614_194056 \
+  --device=cuda:0 \
+  --kit_args=--portable
+```
+
+Run artifacts:
+
+- PID at launch: `2471240`
+- stdout log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2d_highref_fromstage2c23475_cmdx2p5_4p25_ref3p0_4p8_amp0p08_lr2e-4_save25_env4096_20260614_194056.out`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_19-41-25_z1_sprint_amp_stage2d_highref_fromstage2c23475_cmdx2p5_4p25_ref3p0_4p8_amp0p08_lr2e-4_save25_env4096_20260614_194056`
+- deploy snapshot:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2d_highref_fromstage2c23475_cmdx2p5_4p25_ref3p0_4p8_amp0p08_lr2e-4_save25_env4096_20260614_194056/policies/loco_mode/config/LocoMode.yaml`
+- checkpoints:
+  - `model_23475.pt`
+  - `model_23500.pt`
+
+Final online indicators at `model_23500.pt`:
+
+- mean reward: `-7.94`
+- mean episode length: `602.51`
+- timeout ratio: `0.9692`
+- head/shoulder contact ratio: `0.0308`
+- body contact ratio: `0.0`
+- speed tracking failure ratio: `0.0`
+
+Fixed-speed eval, Stage2D-highref `model_23500.pt`:
+
+- eval log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2d_highref_23500_fixed_speed_eval_20260614_1944.out`
+
+| target | mean vx | abs err | resets |
+| --- | ---: | ---: | ---: |
+| 2.50 | 2.5410 | 0.1017 | 1 |
+| 3.00 | 2.9356 | 0.1916 | 1 |
+| 3.50 | 3.1217 | 0.4688 | 5 |
+| 4.00 | 2.5571 | 1.4752 | 20 |
+| 4.25 | 1.8823 | 2.3767 | 41 |
+| 4.50 | 1.5003 | 3.0011 | 48 |
+
+High-speed reset-reason eval, Stage2D-highref `model_23500.pt`:
+
+- reason eval log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2d_highref_23500_fixed_speed_reasons_v3_20260614_1953.out`
+- repeat eval log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2d_highref_23500_fixed_speed_repeat_20260614_1957.out`
+
+| target | mean vx | resets | head/shoulder | speed tracking | body contact | timeout |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 4.00 | 2.9462 | 6 | 1 | 5 | 0 | 0 |
+| 4.25 | 2.2757 | 25 | 5 | 20 | 0 | 0 |
+| 4.00 repeat | 2.6345 | 18 | 2 | 16 | 0 | 0 |
+| 4.25 repeat | 2.3298 | 24 | 5 | 19 | 0 | 0 |
+
+Stage2C-forward `model_23475.pt` high-speed reason comparison:
+
+- reason eval log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2c_forward_23475_fixed_speed_reasons_20260614_1955.out`
+
+| target | mean vx | resets | head/shoulder | speed tracking | body contact | timeout |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 4.00 | 2.4701 | 21 | 3 | 18 | 0 | 0 |
+| 4.25 | 2.0378 | 33 | 4 | 29 | 0 | 0 |
+
+Conclusion:
+
+- Stage2D-highref is useful for `3.0-3.5 m/s`:
+  - `3.0 m/s` is close to target with low reset count.
+  - `3.5 m/s` improves over Stage2C-forward.
+- Stage2D-highref gives a noisy but real improvement at `4.0 m/s` when evaluated from high-speed starts.
+- `4.25 m/s` is still not solved.
+- The dominant failure mode at `4.0-4.25 m/s` is speed tracking failure, not body contact or timeout:
+  - this means the robot usually remains upright enough, but cannot keep commanded speed for the required window.
+- Next direction should target acceleration/stride opening and high-speed tracking directly, not fall-contact tuning:
+  - keep `speed_tracking_duration_s=2.5`;
+  - do not continue Stage2D for many more iterations without checkpoint-by-checkpoint eval;
+  - consider a short Stage2E with high-speed command distribution plus either stronger forward-speed reward shaping or command-slew/eval alignment, while preserving Stage2A `23425` and Stage2C/Stage2D candidates.
