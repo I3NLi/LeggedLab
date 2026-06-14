@@ -2546,3 +2546,140 @@ Conclusion:
   - do not keep pushing speed range wider yet;
   - try a short Stage2F that keeps the Stage2E progress reward but adds posture/landing control at high commands, or slightly lowers progress weight while adding a high-speed torso pitch/height guard;
   - continue using `speed_tracking_duration_s=2.5`.
+
+## Stage2F Posture-Guard Sprint AMP
+
+Date: `2026-06-14`
+
+Reason:
+
+- Stage2E improved high-speed tracking, but introduced more head/shoulder contact at `4.0 m/s`.
+- Stage2F keeps the Stage2E high-speed command/reference setup and tests a small posture guard:
+  - reduce forward-progress reward slightly so it does not over-encourage diving forward;
+  - increase torso/flat orientation and pitch/roll angular velocity penalties modestly;
+  - increase the extra head/shoulder contact termination penalty.
+- This is a short verification run only. The speed range is not widened.
+
+Code/config changes:
+
+- New task: `magicbot_z1_flat_sprint_amp_stage2f_posture`
+- inherits Stage2E command/reference settings:
+  - `lin_vel_x=(3.0, 4.25)`
+  - `lin_vel_y=(-0.1, 0.1)`
+  - `ang_vel_z=(-0.25, 0.25)`
+  - `reference_motion.min_command_speed=3.0`
+  - `reference_motion.max_reference_speed=4.8`
+  - `reference_motion.speed_match_tolerance=0.5`
+- changed from Stage2E:
+  - `forward_speed_progress.weight`: `0.35 -> 0.30`
+  - `ang_vel_xy_l2.weight`: `-0.05 -> -0.08`
+  - `body_orientation_l2.weight`: `-2.0 -> -2.5`
+  - `flat_orientation_l2.weight`: `-1.0 -> -1.2`
+  - `head_shoulder_contact_termination_penalty.weight`: `-180.0 -> -240.0`
+  - learning rate: `7.5e-5`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- AppLauncher registry/config check passed:
+  - task registered: `magicbot_z1_flat_sprint_amp_stage2f_posture`
+  - `lin_vel_x=(3.0, 4.25)`
+  - `forward_speed_progress.weight=0.30`
+  - `ang_vel_xy_l2.weight=-0.08`
+  - `body_orientation_l2.weight=-2.5`
+  - `flat_orientation_l2.weight=-1.2`
+  - `head_shoulder_contact_termination_penalty.weight=-240.0`
+  - `motion_prior.enable=True`
+  - `motion_prior.reward_coef=0.08`
+  - `learning_rate=0.000075`
+- Smoke training passed:
+  - envs: `64`
+  - max iterations: `1`
+  - start checkpoint: Stage2E `model_23525.pt`
+
+Formal run:
+
+```bash
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2f_posture \
+  --num_envs 4096 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-14_20-10-09_z1_sprint_amp_stage2e_progress_fromstage2d23500_cmdx3p0_4p25_ref3p0_4p8_prog0p35_amp0p08_lr1e-4_save25_env4096_20260614_200940 \
+  --checkpoint model_23525.pt \
+  --max_iterations 26 \
+  --run_name z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431 \
+  --logger tensorboard \
+  --deploy_yaml_root /home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431
+```
+
+Run artifacts:
+
+- stdout log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431.out`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431`
+- deploy snapshot:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/policies/loco_mode/config/LocoMode.yaml`
+- checkpoints:
+  - `model_23525.pt`
+  - `model_23550.pt`
+- fixed-speed eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/eval_fixed_speed_23550_3p0_4p5.txt`
+- gait quality eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/eval_gait_quality_23550_3p5_4p25.txt`
+
+Final online indicators at `model_23550.pt`:
+
+- mean reward: `0.80`
+- mean episode length: `596.49`
+- timeout ratio: `0.9416`
+- head/shoulder contact ratio: `0.0584`
+- body contact ratio: `0.0`
+- speed tracking failure ratio: `0.0`
+- forward speed progress reward contribution: `0.1448`
+- track linear velocity reward contribution: `0.5852`
+
+Fixed-speed comparison, same conditions (`num_envs=64`, `duration=6`, `warmup=2`):
+
+| checkpoint | target | mean vx | abs err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2E 23525 | 3.00 | 3.0239 | 0.1491 | 1 | 1 | 0 |
+| Stage2F 23550 | 3.00 | 3.0559 | 0.1349 | 0 | 0 | 0 |
+| Stage2E 23525 | 3.50 | 3.3725 | 0.2369 | 0 | 0 | 0 |
+| Stage2F 23550 | 3.50 | 3.3688 | 0.2232 | 4 | 4 | 0 |
+| Stage2E 23525 | 4.00 | 3.1852 | 0.8536 | 11 | 6 | 5 |
+| Stage2F 23550 | 4.00 | 3.1606 | 0.8573 | 9 | 5 | 4 |
+| Stage2E 23525 | 4.25 | 2.7182 | 1.5385 | 23 | 7 | 16 |
+| Stage2F 23550 | 4.25 | 2.9303 | 1.3238 | 10 | 7 | 3 |
+| Stage2E 23525 | 4.50 | 2.1016 | 2.3999 | 31 | 8 | 23 |
+| Stage2F 23550 | 4.50 | 2.4904 | 2.0101 | 16 | 1 | 15 |
+
+Gait quality eval, Stage2F `model_23550.pt`:
+
+| target | mean vx | abs err | resets | tilt xy | p90 swing foot z | single stance | double stance | flight | contact transitions/env/s | arm abs offset | shoulder pitch abs offset |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 3.50 | 3.2905 | 0.2830 | 2 | 0.0421 | 0.2621 | 0.8722 | 0.0060 | 0.1218 | 7.7240 | 0.2630 | 0.2158 |
+| 4.00 | 3.3989 | 0.6129 | 1 | 0.0514 | 0.2655 | 0.8464 | 0.0097 | 0.1440 | 7.9010 | 0.2931 | 0.2527 |
+| 4.25 | 3.3165 | 0.9359 | 3 | 0.0568 | 0.2663 | 0.8422 | 0.0092 | 0.1486 | 7.8177 | 0.3018 | 0.2687 |
+
+Conclusion:
+
+- Stage2F `model_23550.pt` is now the best high-speed candidate in fixed-speed eval.
+- Compared with Stage2E, it improves the important high-speed points:
+  - `4.25 m/s`: mean vx `2.7182 -> 2.9303`, resets `23 -> 10`, speed-tracking resets `16 -> 3`.
+  - `4.50 m/s`: mean vx `2.1016 -> 2.4904`, resets `31 -> 16`, head/shoulder resets `8 -> 1`.
+- It keeps `4.0 m/s` roughly flat:
+  - mean vx `3.1852 -> 3.1606`
+  - resets `11 -> 9`
+- Tradeoff:
+  - `3.5 m/s` has new head/shoulder resets in fixed-speed eval (`0 -> 4`), even though gait eval remains good.
+  - Because of this, do not widen command range yet.
+- Next direction:
+  - preserve both Stage2E `model_23525.pt` and Stage2F `model_23550.pt`;
+  - run Isaac play/video before deploying Stage2F;
+  - for Stage2G, keep speed range at `3.0-4.25` and focus on reducing the new `3.5 m/s` head/shoulder contacts while retaining Stage2F's `4.25/4.5` gains;
+  - likely try an even smaller posture adjustment or a command-conditioned guard instead of increasing global orientation penalties further.
