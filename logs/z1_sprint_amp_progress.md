@@ -3733,3 +3733,92 @@ Validation:
 - registry check passed:
   - task resolves as `magicbot_z1_flat_sprint_amp_stage2l_stabilityanchor`
   - command ranges, reward weights, AMP gate, and `speed_tracking_duration_s=2.5` match the intended Stage2L settings.
+
+Formal Stage2L run:
+
+- unit:
+  `z1_stage2l_stabilityanchor_20260615_002517.service`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-25-33_z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517.out`
+- deploy yaml snapshot root:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-09-58_z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941/model_23650.pt`
+- command:
+
+```bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2l_stabilityanchor \
+  --num_envs 1024 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-15_00-09-58_z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941 \
+  --checkpoint model_23650.pt \
+  --max_iterations 26 \
+  --run_name z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517 \
+  --logger tensorboard \
+  --deploy_yaml_root /home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517
+```
+
+Online indicators:
+
+| iteration | mean reward | mean episode length | track xy | progress | track yaw | timeout ratio | head/shoulder ratio | speed failure ratio |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 23651 | -3.55 | 25.23 | 0.0533 | 0.0000 | 0.0167 | 0.6840 | 0.3160 | 0.0000 |
+| 23654 | -0.44 | 75.74 | 0.1630 | 0.0050 | 0.0534 | 0.9375 | 0.0625 | 0.0000 |
+| 23657 | -3.67 | 132.45 | 0.2613 | 0.0215 | 0.0895 | 0.9583 | 0.0417 | 0.0000 |
+| 23660 | 3.11 | 217.72 | 0.3663 | 0.0391 | 0.1194 | 0.9236 | 0.0764 | 0.0000 |
+| 23663 | 4.99 | 285.78 | 0.5135 | 0.0583 | 0.1557 | 0.9583 | 0.0417 | 0.0000 |
+| 23669 | 8.79 | 421.63 | 0.7309 | 0.0940 | 0.2315 | 1.0000 | 0.0000 | 0.0000 |
+| 23675 | 8.65 | 529.42 | 0.9702 | 0.1299 | 0.3074 | 0.9201 | 0.0799 | 0.0000 |
+
+Stage2L eval artifacts:
+
+- straight eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-25-33_z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517/eval_fixed_speed_23675_env64_3p5_4p5.txt`
+- turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-25-33_z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517/eval_fixed_command_23675_vy0p20_wz0p35_env32.txt`
+
+Straight eval comparison (`vy=0.0`, `wz=0.0`, `num_envs=64`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2K 23650 | 3.50 | 3.5350 | 0.2608 | 0.3132 | 0.4425 | 0 | 0 | 0 |
+| Stage2L 23675 | 3.50 | 3.4973 | 0.2262 | 0.2799 | 0.3926 | 1 | 1 | 0 |
+| Stage2K 23650 | 4.00 | 3.3896 | 0.6785 | 0.7267 | 2.1301 | 5 | 4 | 1 |
+| Stage2L 23675 | 4.00 | 3.5747 | 0.4764 | 0.5221 | 1.2889 | 3 | 3 | 0 |
+| Stage2K 23650 | 4.25 | 3.3884 | 0.8895 | 0.9309 | 2.7273 | 3 | 2 | 1 |
+| Stage2L 23675 | 4.25 | 3.4400 | 0.8239 | 0.8608 | 2.3625 | 6 | 5 | 1 |
+| Stage2K 23650 | 4.50 | 2.9410 | 1.5630 | 1.5931 | 4.2028 | 4 | 3 | 1 |
+| Stage2L 23675 | 4.50 | 3.1670 | 1.3340 | 1.3607 | 3.4682 | 3 | 3 | 0 |
+
+Turning eval comparison (`vy=0.20`, `wz=0.35`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2K 23650 | 3.50 | 3.5059 | 0.1896 | 0.2649 | 0.2043 | 0.1254 | 0.3834 | 0.2654 | 0.3995 | 1 | 1 | 0 |
+| Stage2L 23675 | 3.50 | 3.5098 | 0.1948 | 0.2476 | 0.1438 | 0.1170 | 0.3947 | 0.2056 | 0.3513 | 0 | 0 | 0 |
+| Stage2K 23650 | 4.00 | 3.5103 | 0.2029 | 0.2270 | 0.5273 | 0.1448 | 0.4309 | 0.5752 | 1.3413 | 2 | 2 | 0 |
+| Stage2L 23675 | 4.00 | 3.5390 | 0.2064 | 0.2500 | 0.4846 | 0.1413 | 0.4488 | 0.5326 | 1.1718 | 2 | 2 | 0 |
+| Stage2K 23650 | 4.25 | 3.3491 | 0.1725 | 0.2361 | 0.9067 | 0.1882 | 0.4946 | 0.9476 | 2.4999 | 2 | 2 | 0 |
+| Stage2L 23675 | 4.25 | 3.4509 | 0.1980 | 0.2408 | 0.8046 | 0.1537 | 0.4513 | 0.8385 | 2.1565 | 3 | 3 | 0 |
+
+Stage2L checkpoint choice:
+
+- `model_23675.pt` is useful as a speed-tracking candidate, but not an unambiguous safety upgrade.
+- It repairs the Stage2K straight `4.0` pocket:
+  - mean vx `3.3896 -> 3.5747`
+  - speed-tracking resets `1 -> 0`
+  - `xy_abs_err 0.7267 -> 0.5221`
+- It improves speed tracking at straight `4.25` and `4.5`, but head/shoulder resets remain the limiting factor:
+  - straight `4.25` resets `3 -> 6`, head/shoulder `2 -> 5`
+  - straight `4.5` mean vx `2.9410 -> 3.1670`, but still far from stable `4.5`
+- It improves turning velocity metrics at `3.5-4.25`, with zero speed-tracking resets, but head/shoulder resets are slightly higher at `4.25`.
+- Current recommendation:
+  - keep Stage2L `model_23675.pt` for visual inspection and as the best speed-tracking candidate so far.
+  - keep Stage2K `model_23650.pt` as the safer mixed fallback.
+  - next stage should reduce head/shoulder contact while preserving Stage2L's speed-tracking gains.
