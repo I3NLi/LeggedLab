@@ -1553,3 +1553,97 @@ Startup status:
   - iteration `23405-23406` had high speed tracking failure ratio around `0.16-0.18`.
   - by iteration `23407`, speed tracking failure ratio dropped to `0.0240`, timeout ratio rose to `0.9555`, and mean reward recovered to `0.27`.
   - continue monitoring until `model_23425.pt` before deciding whether the early failures are transient.
+
+Final online training state:
+
+- final checkpoint: `model_23500.pt`
+- saved at: `2026-06-14 17:44:09`
+- iteration `23500` snapshot:
+  - Mean reward: `7.97`
+  - Mean episode length: `977.32`
+  - timeout ratio: `0.9227`
+  - head/shoulder contact ratio: `0.0606`
+  - body contact ratio: `0.0000`
+  - speed tracking failure ratio: `0.0167`
+- checkpoints saved:
+  - `model_23425.pt`
+  - `model_23450.pt`
+  - `model_23475.pt`
+  - `model_23500.pt`
+
+## Stage2A Fixed-Speed Eval
+
+Date: `2026-06-14`
+
+Task:
+
+- `magicbot_z1_flat_sprint_amp_stage2a`
+
+Eval setup:
+
+- envs: `32`
+- warmup: `3.0 s`
+- measured duration: `8.0 s`
+- speeds: `2.5`, `3.0`, `3.5`, `4.0`, `4.25 m/s`
+- log prefix: `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_fixed_eval_stage2a_model_*_20260614_1745.out`
+
+| checkpoint | cmd vx | mean vx | abs err | resets |
+|---|---:|---:|---:|---:|
+| 23425 | 2.5 | 2.4886 | 0.0917 | 0 |
+| 23425 | 3.0 | 2.8170 | 0.2534 | 3 |
+| 23425 | 3.5 | 3.0369 | 0.5110 | 7 |
+| 23425 | 4.0 | 3.2050 | 0.8140 | 8 |
+| 23425 | 4.25 | 2.2012 | 2.0565 | 24 |
+| 23450 | 2.5 | 2.4285 | 0.1093 | 0 |
+| 23450 | 3.0 | 2.7889 | 0.2500 | 7 |
+| 23450 | 3.5 | 3.1383 | 0.3968 | 5 |
+| 23450 | 4.0 | 2.7067 | 1.3103 | 18 |
+| 23450 | 4.25 | 2.0614 | 2.1937 | 25 |
+| 23475 | 2.5 | 2.4305 | 0.1049 | 1 |
+| 23475 | 3.0 | 2.8943 | 0.1485 | 1 |
+| 23475 | 3.5 | 2.8400 | 0.6843 | 12 |
+| 23475 | 4.0 | 2.6137 | 1.3944 | 15 |
+| 23475 | 4.25 | 2.1953 | 2.0553 | 23 |
+| 23500 | 2.5 | 2.4376 | 0.1114 | 2 |
+| 23500 | 3.0 | 2.9009 | 0.1737 | 1 |
+| 23500 | 3.5 | 3.2785 | 0.2809 | 4 |
+| 23500 | 4.0 | 2.9576 | 1.0577 | 13 |
+| 23500 | 4.25 | 1.7778 | 2.4772 | 38 |
+
+Fixed-speed conclusion:
+
+- `model_23425.pt` is the best high-speed Stage2A candidate.
+- Compared with Stage1C `23400`, `23425` substantially improves `4.0 m/s` tracking.
+- `model_23500.pt` is better at `3.5 m/s` and preserves `3.0 m/s`, but it loses high-speed stability at `4.0-4.25 m/s`.
+- `4.25 m/s` is still not stable in any Stage2A checkpoint and should not yet be treated as solved.
+
+## Stage2A Gait Quality Eval
+
+Date: `2026-06-14`
+
+Eval logs:
+
+- `23425`: `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_gait_quality_stage2a_model_23425_20260614_1755.out`
+- `23500`: `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_gait_quality_stage2a_model_23500_20260614_1755.out`
+
+| checkpoint | cmd vx | mean vx | abs err | resets | tilt xy | p90 swing foot z | single stance | flight | arm abs | shoulder pitch abs |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 23425 | 2.5 | 2.4883 | 0.0886 | 0 | 0.0398 | 0.2679 | 0.9119 | 0.0867 | 0.2346 | 0.1445 |
+| 23425 | 3.0 | 2.8079 | 0.2546 | 1 | 0.0469 | 0.2786 | 0.8762 | 0.1084 | 0.2915 | 0.1952 |
+| 23425 | 3.5 | 2.9217 | 0.6112 | 2 | 0.0565 | 0.2839 | 0.8352 | 0.1233 | 0.3250 | 0.2383 |
+| 23425 | 4.0 | 3.1991 | 0.8093 | 2 | 0.0685 | 0.2932 | 0.8228 | 0.1436 | 0.3622 | 0.2819 |
+| 23425 | 4.25 | 2.8470 | 1.4055 | 6 | 0.0725 | 0.2893 | 0.8013 | 0.1453 | 0.3536 | 0.2900 |
+| 23500 | 2.5 | 2.4528 | 0.0971 | 0 | 0.0558 | 0.2609 | 0.9058 | 0.0942 | 0.1933 | 0.1321 |
+| 23500 | 3.0 | 2.9086 | 0.1477 | 0 | 0.0493 | 0.2760 | 0.8606 | 0.1384 | 0.2648 | 0.1882 |
+| 23500 | 3.5 | 3.0589 | 0.4775 | 3 | 0.0496 | 0.2817 | 0.8297 | 0.1520 | 0.3059 | 0.2427 |
+| 23500 | 4.0 | 2.8909 | 1.1152 | 7 | 0.0557 | 0.2815 | 0.8200 | 0.1502 | 0.3237 | 0.2777 |
+| 23500 | 4.25 | 2.1769 | 2.0733 | 10 | 0.0659 | 0.2779 | 0.8053 | 0.1305 | 0.3107 | 0.2771 |
+
+Gait conclusion:
+
+- `23425` is better for the Stage 2 high-speed objective, especially at `4.0 m/s`.
+- `23500` has lower arm/shoulder offsets at low/mid speeds, but gives up too much high-speed tracking.
+- Current Stage2A selection:
+  - high-speed candidate: `model_23425.pt`
+  - smoother mid-speed backup: `model_23500.pt`
+- Next action: play `model_23425.pt` with command range `-2.5..4.25` before considering it deployable.
