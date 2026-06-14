@@ -1371,3 +1371,9 @@ Deploy YAML validation:
 Note:
 
 - The deploy YAML keeps max command at `3.75 m/s`, matching Stage1C training. The `4.0 m/s` eval/play is exploratory and should not be treated as a stable deploy command yet.
+- Deploy repo local commit:
+  - repo: `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot`
+  - branch: `refactor/controller-core-adapters`
+  - commit: `60cc7b9 Update Z1 loco policy to Stage1C sprint checkpoint`
+  - scope: only the two loco YAML files and three policy artifact files were committed.
+  - push status: not pushed, because the current branch has no matching remote branch.
