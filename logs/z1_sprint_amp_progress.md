@@ -3668,3 +3668,20 @@ Stage2K checkpoint choice:
 - Current recommendation:
   - keep Stage2K `model_23650.pt` as the best mixed turning/speed checkpoint so far.
   - do not continue this exact Stage2K run blindly; next stage should either soften the `4.0` instability or use a curriculum/mixture that protects the straight `4.0` pocket while pushing `4.25+`.
+
+Stage2K play/export validation:
+
+- stopped the previous Stage2J GUI play and started Stage2K GUI play.
+- play unit:
+  `z1_stage2k_play_20260615_002008.service`
+- play stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2k_play_23650_cmdx3p5_4p65_cmdy0p22_yaw0p40_env16_20260615_002008.out`
+- checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-09-58_z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941/model_23650.pt`
+- play command range:
+  - `lin_vel_x=(3.5, 4.65)`
+  - `lin_vel_y=(-0.22, 0.22)`
+  - `ang_vel_z=(-0.40, 0.40)`
+- exported artifacts:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-09-58_z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941/exported/policy.pt`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-09-58_z1_sprint_amp_stage2k_mixedretention_fromstage2j23625_cmdx3p5_4p65_cmdy0p22_yaw0p40_trackxy1p95_prog0p30_env1024_20260615_000941/exported/policy.onnx`
