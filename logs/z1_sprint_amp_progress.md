@@ -3426,3 +3426,71 @@ Early interpretation:
 - Stage2J starts cleanly from Stage2I and is not showing the previous collapse pattern.
 - `track_lin_vel_xy_exp` and `track_ang_vel_z_exp` both increase during the first ten iterations, which is the intended effect.
 - Speed-tracking failure remains `0.0` so far despite the wider `vy/yaw` command ranges.
+
+Stage2J completion:
+
+- service status: inactive after completing the scheduled run.
+- final checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947/model_23625.pt`
+- saved checkpoints:
+  - `model_23575.pt`
+  - `model_23600.pt`
+  - `model_23625.pt`
+
+Final online indicators:
+
+- mean reward: `13.76`
+- mean episode length: `930.53`
+- `Episode_Reward/track_lin_vel_xy_exp`: `1.4531`
+- `Episode_Reward/track_ang_vel_z_exp`: `0.5251`
+- timeout ratio: `0.9375`
+- head/shoulder contact ratio: `0.0625`
+- speed tracking failure ratio: `0.0000`
+
+Stage2J eval artifacts:
+
+- `model_23625.pt` turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947/eval_fixed_command_23625_vy0p20_wz0p35_env32.txt`
+- `model_23625.pt` straight eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947/eval_fixed_speed_23625_env64_3p5_4p25.txt`
+- `model_23600.pt` turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947/eval_fixed_command_23600_vy0p20_wz0p35_env32.txt`
+- `model_23600.pt` straight eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947/eval_fixed_speed_23600_env64_3p5_4p25.txt`
+
+Turning eval comparison (`vy=0.20`, `wz=0.35`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2I 23575 | 3.50 | 3.3465 | 0.2599 | 0.2875 | 0.2690 | 0.1474 | 0.4614 | 0.3413 | 0.5925 | 0 | 0 | 0 |
+| Stage2J 23600 | 3.50 | 3.4185 | 0.2240 | 0.2807 | 0.2076 | 0.1195 | 0.4305 | 0.2644 | 0.4433 | 0 | 0 | 0 |
+| Stage2J 23625 | 3.50 | 3.3805 | 0.1927 | 0.2585 | 0.2086 | 0.1234 | 0.3965 | 0.2646 | 0.4487 | 0 | 0 | 0 |
+| Stage2I 23575 | 4.00 | 3.0252 | 0.2103 | 0.2981 | 0.9888 | 0.1955 | 0.5189 | 1.0354 | 2.7442 | 3 | 3 | 0 |
+| Stage2J 23600 | 4.00 | 3.3441 | 0.2223 | 0.2764 | 0.6721 | 0.1527 | 0.4696 | 0.7153 | 1.9400 | 1 | 1 | 0 |
+| Stage2J 23625 | 4.00 | 3.3288 | 0.1923 | 0.2573 | 0.6782 | 0.1610 | 0.4447 | 0.7176 | 1.7663 | 2 | 2 | 0 |
+| Stage2I 23575 | 4.25 | 2.4904 | 0.1883 | 0.3345 | 1.7627 | 0.2243 | 0.5297 | 1.7964 | 3.9550 | 10 | 3 | 7 |
+| Stage2J 23600 | 4.25 | 2.8297 | 0.1908 | 0.2985 | 1.4222 | 0.1973 | 0.5360 | 1.4511 | 3.5907 | 3 | 1 | 2 |
+| Stage2J 23625 | 4.25 | 3.0793 | 0.1375 | 0.2419 | 1.1710 | 0.1933 | 0.4856 | 1.2017 | 2.8706 | 3 | 1 | 2 |
+
+Straight eval comparison within Stage2J (`vy=0.0`, `wz=0.0`, `num_envs=64`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2J 23600 | 3.50 | 3.3638 | 0.3211 | 0.3694 | 0.5636 | 0 | 0 | 0 |
+| Stage2J 23625 | 3.50 | 3.3586 | 0.2982 | 0.3504 | 0.5045 | 2 | 2 | 0 |
+| Stage2J 23600 | 4.00 | 3.2467 | 0.7961 | 0.8362 | 2.8202 | 7 | 3 | 4 |
+| Stage2J 23625 | 4.00 | 3.4656 | 0.5647 | 0.6051 | 1.4863 | 1 | 1 | 0 |
+| Stage2J 23600 | 4.25 | 3.0896 | 1.1703 | 1.1972 | 3.2714 | 1 | 1 | 0 |
+| Stage2J 23625 | 4.25 | 3.1747 | 1.0831 | 1.1130 | 3.2038 | 2 | 1 | 1 |
+
+Stage2J checkpoint choice:
+
+- `model_23625.pt` is better than `model_23600.pt` for the intended turning/lateral objective.
+- `model_23625.pt` also has better short straight-line `4.0/4.25` metrics than `model_23600.pt`.
+- Stage2J improves the Stage2I turning failure mode substantially, especially at `4.25 + vy0.20 + wz0.35`:
+  - resets `10 -> 3`
+  - speed-tracking resets `7 -> 2`
+  - `xy_abs_err 1.7964 -> 1.2017`
+- Remaining limitation:
+  - Stage2J still does not solve sustained `4.25-4.5 m/s` straight sprinting.
+  - Next stage should mix straight high-speed retention with non-zero `vy/yaw`, rather than only widening the turning commands further.
