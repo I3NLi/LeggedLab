@@ -1193,3 +1193,93 @@ First checkpoint:
   - head/shoulder contact ratio: `0.0838`
   - speed tracking failure ratio: `0.0752`
 - note: first checkpoint is useful to evaluate, but speed-tracking failures started to appear right after it; continue monitoring before treating it as better than `23300`.
+
+Final online training state:
+
+- final checkpoint: `model_23400.pt`
+- saved at: `2026-06-14 17:01:12`
+- iteration `23400` snapshot:
+  - Mean reward: `9.60`
+  - Mean episode length: `945.67`
+  - timeout ratio: `0.9170`
+  - head/shoulder contact ratio: `0.0684`
+  - body contact ratio: `0.0000`
+  - speed tracking failure ratio: `0.0147`
+- online conclusion: the run did not collapse. Online metrics are much healthier than the earlier failed long-duration speed-tracking run, but checkpoint selection must be based on fixed-speed eval.
+
+## Stage1C Fixed-Speed Eval
+
+Date: `2026-06-14`
+
+Task:
+
+- `magicbot_z1_flat_sprint_amp_stage1c`
+
+Eval setup:
+
+- envs: `32`
+- warmup: `3.0 s`
+- measured duration: `8.0 s`
+- speeds: `2.5`, `3.0`, `3.5`, `4.0 m/s`
+- log prefix: `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_fixed_eval_stage1c_model_*_20260614_1703.out`
+
+| checkpoint | cmd vx | mean vx | abs err | resets |
+|---|---:|---:|---:|---:|
+| 23325 | 2.5 | 2.4487 | 0.1002 | 0 |
+| 23325 | 3.0 | 2.6434 | 0.3832 | 8 |
+| 23325 | 3.5 | 2.7357 | 0.7813 | 8 |
+| 23325 | 4.0 | 2.3766 | 1.6269 | 22 |
+| 23350 | 2.5 | 2.4131 | 0.1189 | 0 |
+| 23350 | 3.0 | 2.7120 | 0.3027 | 6 |
+| 23350 | 3.5 | 2.9746 | 0.5349 | 8 |
+| 23350 | 4.0 | 2.3281 | 1.6735 | 21 |
+| 23375 | 2.5 | 2.3751 | 0.1403 | 0 |
+| 23375 | 3.0 | 2.5855 | 0.4195 | 4 |
+| 23375 | 3.5 | 2.7000 | 0.8025 | 11 |
+| 23375 | 4.0 | 2.2344 | 1.7670 | 15 |
+| 23400 | 2.5 | 2.3885 | 0.1329 | 0 |
+| 23400 | 3.0 | 2.6157 | 0.3958 | 3 |
+| 23400 | 3.5 | 3.0790 | 0.4294 | 4 |
+| 23400 | 4.0 | 2.6634 | 1.3390 | 14 |
+
+Fixed-speed conclusion:
+
+- `model_23400.pt` is the best Stage1C checkpoint overall.
+- It preserves low-speed stability well enough at `2.5 m/s` with zero resets.
+- It is the best Stage1C checkpoint at `3.5 m/s`.
+- It improves `4.0 m/s` over Stage1A `23300` and Stage1B `23400`, but `4.0 m/s` is still not stable enough to call Stage 2 solved.
+- `model_23350.pt` is a useful backup if visual play shows `23400` has worse posture, but metrics favor `23400`.
+
+## Stage1C Gait Quality Eval
+
+Date: `2026-06-14`
+
+Checkpoint:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/model_23400.pt`
+
+Eval log:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_gait_quality_stage1c_23400_20260614_1715.out`
+
+| cmd vx | mean vx | abs err | resets | tilt xy | p90 swing foot z | single stance | flight | arm abs | shoulder pitch abs |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2.5 | 2.3908 | 0.1298 | 0 | 0.0443 | 0.2691 | 0.9100 | 0.0900 | 0.2439 | 0.1493 |
+| 3.0 | 2.7905 | 0.2193 | 0 | 0.0460 | 0.2817 | 0.8728 | 0.1237 | 0.3054 | 0.2030 |
+| 3.5 | 2.9861 | 0.5175 | 2 | 0.0579 | 0.2883 | 0.8377 | 0.1412 | 0.3424 | 0.2539 |
+| 4.0 | 2.4722 | 1.5283 | 10 | 0.0669 | 0.2893 | 0.8120 | 0.1283 | 0.3393 | 0.2809 |
+
+Gait conclusion:
+
+- `23400` keeps clean `2.5-3.0 m/s` gait in this gait eval, with zero resets.
+- Arm and shoulder-pitch offsets are lower than Stage1A `23300` in the previous gait-quality eval, which is a good sign for the "arms front-raised/stiff" issue.
+- `3.5 m/s` is now a plausible next-stage base, though still under-commanded.
+- `4.0 m/s` remains exploratory; it should not be used as the next stable baseline without play/MuJoCo/deploy checks.
+
+Current Stage1 selection:
+
+- best Stage1C candidate: `model_23400.pt`
+- keep protected stable baseline: `model_23000.pt`
+- keep stable Stage1A reference: `model_23300.pt`
+- keep Stage1C backup: `model_23350.pt`
+- next recommended action: play `model_23400.pt` with command range `-2.5..4.0`, then export/update deploy artifacts only if visual gait is acceptable.
