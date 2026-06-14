@@ -1313,3 +1313,61 @@ To stop this play:
 ```bash
 kill 789481
 ```
+
+## Deploy Artifact Sync: Stage1C 23400
+
+Date: `2026-06-14`
+
+Reason:
+
+- Stage1C play exported the correct `model_23400.pt` policy artifacts, but `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/policies/loco_mode/model` still contained older files from `2026-06-14 01:11`.
+- The deploy YAML files were already synchronized by the Stage1C training run and matched the run-local deploy YAML exactly.
+
+Synced model artifacts:
+
+- source:
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/exported/policy.pt`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/exported/policy.onnx`
+  - `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/exported/policy.onnx.data`
+- destination:
+  - `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/policies/loco_mode/model/policy.pt`
+  - `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/policies/loco_mode/model/policy.onnx`
+  - `/home/hiyio/MaigcLab/RoboMimic_Deploy_magicbot/policies/loco_mode/model/policy.onnx.data`
+
+Backup files created in deploy repo:
+
+- `policy.pt.bak_20260614_1724_before_stage1c23400`
+- `policy.onnx.bak_20260614_1724_before_stage1c23400`
+- `policy.onnx.data.bak_20260614_1724_before_stage1c23400`
+
+Hash validation after sync:
+
+- `policy.pt`: `1b1601cb0594b67fac5de6d8c5abb0989921620a3012ef21642a4f90de80217a`
+- `policy.onnx`: `aa464ee9d79561721c1bee59a64c7908c9eac319a338a37a0cb8876ab25f9cf4`
+- `policy.onnx.data`: `9c11d9f2cf789fdba9b3ca81a3a8921290b7ab6bdf6eda80f1bbf4b81620db3b`
+
+Deploy YAML validation:
+
+- run-local and deploy YAML hashes match exactly:
+  - `LocoMode.yaml`: `c77307444621c178f1cc26a4fb469b6942709edb438a43f21e6e3e176ad7a12e`
+  - `LocoMode_lowKp.yaml`: `c77307444621c178f1cc26a4fb469b6942709edb438a43f21e6e3e176ad7a12e`
+- parsed deploy config:
+  - `policy_path: policy.onnx`
+  - `command_dim: 4`
+  - `num_obs: 82`
+  - `num_actions: 24`
+  - `policy_dt: 0.02`
+  - `cmd_range.lin_vel_x: [-2.5, 3.75]`
+  - `cmd_slew_rate: [2.0, 1.0, 2.0]`
+  - `root_height_command: 0.69`
+  - `obs_clip: 100.0`
+  - `action_scale: 0.25`
+  - unique `kps`: `[59.336062, 113.02671]`
+  - unique `kds`: `[3.777451, 7.195504]`
+- ONNX graph check:
+  - input: `obs [1, 82]`
+  - output: `actions [1, 24]`
+
+Note:
+
+- The deploy YAML keeps max command at `3.75 m/s`, matching Stage1C training. The `4.0 m/s` eval/play is exploratory and should not be treated as a stable deploy command yet.
