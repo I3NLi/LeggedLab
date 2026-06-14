@@ -3887,3 +3887,137 @@ Validation:
 - registry check passed:
   - task resolves as `magicbot_z1_flat_sprint_amp_stage2m_headguard`
   - command range, AMP gate, speed-tracking duration, and head-guard reward weights match the intended Stage2M settings.
+
+Formal Stage2M run:
+
+- unit:
+  `z1_stage2m_headguard_20260615_010531.service`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_01-05-49_z1_sprint_amp_stage2m_headguard_fromstage2l23675_cmdx3p4_4p55_headpen320_env1024_20260615_010531`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2m_headguard_fromstage2l23675_cmdx3p4_4p55_headpen320_env1024_20260615_010531.out`
+- deploy yaml snapshot root:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2m_headguard_fromstage2l23675_cmdx3p4_4p55_headpen320_env1024_20260615_010531`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-25-33_z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517/model_23675.pt`
+- produced checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_01-05-49_z1_sprint_amp_stage2m_headguard_fromstage2l23675_cmdx3p4_4p55_headpen320_env1024_20260615_010531/model_23700.pt`
+
+Online indicators:
+
+| iteration | mean reward | mean episode length | track xy | progress | track yaw | timeout ratio | head/shoulder ratio | speed failure ratio |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 23676 | -3.82 | 24.68 | 0.0537 | 0.0000 | 0.0154 | 0.6667 | 0.3333 | 0.0000 |
+| 23679 | -3.60 | 74.72 | 0.1612 | 0.0049 | 0.0526 | 0.9167 | 0.0833 | 0.0000 |
+| 23682 | 1.41 | 131.72 | 0.2474 | 0.0212 | 0.0893 | 0.9583 | 0.0417 | 0.0000 |
+| 23694 | 9.17 | 525.96 | 0.8414 | 0.1107 | 0.2687 | 0.8681 | 0.1319 | 0.0000 |
+| 23700 | 9.10 | 540.73 | 0.9204 | 0.1219 | 0.2941 | 0.8889 | 0.1111 | 0.0000 |
+
+Stage2M eval artifacts:
+
+- straight eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_01-05-49_z1_sprint_amp_stage2m_headguard_fromstage2l23675_cmdx3p4_4p55_headpen320_env1024_20260615_010531/eval_fixed_speed_23700_env64_3p5_4p5.txt`
+- standard turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_01-05-49_z1_sprint_amp_stage2m_headguard_fromstage2l23675_cmdx3p4_4p55_headpen320_env1024_20260615_010531/eval_fixed_command_23700_vy0p20_wz0p35_env32.txt`
+- stronger turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_01-05-49_z1_sprint_amp_stage2m_headguard_fromstage2l23675_cmdx3p4_4p55_headpen320_env1024_20260615_010531/eval_fixed_command_23700_vy0p35_wz0p60_env32.txt`
+
+Straight eval comparison (`vy=0.0`, `wz=0.0`, `num_envs=64`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2L 23675 | 3.50 | 3.4973 | 0.2262 | 0.2799 | 0.3926 | 1 | 1 | 0 |
+| Stage2M 23700 | 3.50 | 3.5100 | 0.1723 | 0.2287 | 0.3436 | 0 | 0 | 0 |
+| Stage2L 23675 | 4.00 | 3.5747 | 0.4764 | 0.5221 | 1.2889 | 3 | 3 | 0 |
+| Stage2M 23700 | 4.00 | 3.6023 | 0.4309 | 0.4751 | 1.0420 | 4 | 4 | 0 |
+| Stage2L 23675 | 4.25 | 3.4400 | 0.8239 | 0.8608 | 2.3625 | 6 | 5 | 1 |
+| Stage2M 23700 | 4.25 | 3.2649 | 0.9940 | 1.0290 | 3.3382 | 8 | 6 | 2 |
+| Stage2L 23675 | 4.50 | 3.1670 | 1.3340 | 1.3607 | 3.4682 | 3 | 3 | 0 |
+| Stage2M 23700 | 4.50 | 3.0177 | 1.4842 | 1.5101 | 4.1743 | 7 | 7 | 0 |
+
+Standard turning eval (`vy=0.20`, `wz=0.35`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2L 23675 | 3.50 | 3.5098 | 0.1948 | 0.2476 | 0.1438 | 0.1170 | 0.3947 | 0.2056 | 0.3513 | 0 | 0 | 0 |
+| Stage2M 23700 | 3.50 | 3.4795 | 0.1523 | 0.2285 | 0.1450 | 0.1213 | 0.3864 | 0.2078 | 0.3475 | 0 | 0 | 0 |
+| Stage2L 23675 | 4.00 | 3.5390 | 0.2064 | 0.2500 | 0.4846 | 0.1413 | 0.4488 | 0.5326 | 1.1718 | 2 | 2 | 0 |
+| Stage2M 23700 | 4.00 | 3.4994 | 0.1768 | 0.2476 | 0.5185 | 0.1434 | 0.4220 | 0.5627 | 1.3141 | 2 | 2 | 0 |
+| Stage2L 23675 | 4.25 | 3.4509 | 0.1980 | 0.2408 | 0.8046 | 0.1537 | 0.4513 | 0.8385 | 2.1565 | 3 | 3 | 0 |
+| Stage2M 23700 | 4.25 | 3.5814 | 0.1749 | 0.2032 | 0.6716 | 0.1448 | 0.4361 | 0.7050 | 1.6330 | 2 | 1 | 1 |
+
+Stronger turning eval (`vy=0.35`, `wz=0.60`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2M 23700 | 3.50 | 3.3713 | 0.1887 | 0.3510 | 0.2306 | 0.2024 | 0.5259 | 0.3449 | 0.5251 | 3 | 3 | 0 |
+| Stage2M 23700 | 4.00 | 3.4528 | 0.2173 | 0.3365 | 0.5563 | 0.1990 | 0.5564 | 0.6210 | 1.4873 | 4 | 4 | 0 |
+| Stage2M 23700 | 4.25 | 3.2497 | 0.2030 | 0.3398 | 1.0019 | 0.2167 | 0.5905 | 1.0447 | 2.5303 | 4 | 2 | 2 |
+
+Stage2M checkpoint choice:
+
+- `model_23700.pt` improved the straight `3.5` and `4.0` tracking metrics slightly, but made straight `4.25` and `4.5` worse than Stage2L.
+- It did not solve the turning weakness:
+  - at `vy=0.20`, `wz=0.35`, actual yaw stays around `0.20-0.25 rad/s`;
+  - at `vy=0.35`, `wz=0.60`, actual yaw stays around `0.34-0.35 rad/s`, and actual lateral speed stays around `0.19-0.22 m/s`.
+- Main failure mode remains head/shoulder contact plus occasional speed-tracking reset at higher command speed.
+- Recommendation:
+  - keep Stage2L `model_23675.pt` as the better high-speed visual/speed base.
+  - keep Stage2K `model_23650.pt` as the safer mixed fallback.
+  - do not use Stage2M as the next base; use Stage2L and explicitly train y/yaw agility.
+
+## Stage2N: high-speed lateral/yaw agility mix
+
+Purpose:
+
+- Respond to the observation that high-speed running is not enough; lateral command and yaw-rate command need direct strengthening.
+- Build from Stage2L `model_23675.pt`, not Stage2M, because Stage2M over-regularized the higher-speed straight pocket.
+- Keep a moderate high-speed x range while widening y/yaw enough to cover the failing eval point `vy=0.35`, `wz=0.60`.
+
+Config changes:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2n_agilitymix`
+- base: `MagicBotZ1FlatSprintAMPStage2LStabilityAnchorEnvCfg`
+- added reward function:
+  - `mdp.track_lin_vel_y_yaw_frame_exp`
+  - default Z1 reward weight is `0.0`, so older tasks are not changed.
+- command range:
+  - `lin_vel_x=(3.35, 4.50)`
+  - `lin_vel_y=(-0.35, 0.35)`
+  - `ang_vel_z=(-0.65, 0.65)`
+- reference motion:
+  - `min_command_speed=3.35`
+  - `max_reference_speed=5.2`
+  - `speed_match_tolerance=0.85`
+- reward tuning:
+  - `track_lin_vel_xy_exp.weight=1.95`
+  - `track_lin_vel_xy_exp.std=0.95`
+  - `track_lin_vel_y_exp.weight=0.55`
+  - `track_lin_vel_y_exp.std=0.35`
+  - `track_ang_vel_z_exp.weight=1.85`
+  - `track_ang_vel_z_exp.std=0.50`
+  - `forward_speed_progress.weight=0.20`
+  - `forward_speed_progress.min_command_x=3.35`
+  - `head_shoulder_contact_termination_penalty.weight=-260.0`
+  - `ang_vel_xy_l2.weight=-0.08`
+  - `body_orientation_l2.weight=-2.5`
+  - `flat_orientation_l2.weight=-1.2`
+  - `action_rate_l2.weight=-8.0e-3`
+- retained safety:
+  - `speed_tracking_duration_s=2.5`
+- agent:
+  - `learning_rate=2e-5`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.35`
+  - `save_interval=25`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/mdp/rewards.py`
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- registry check passed with `AppLauncher(headless=True)`:
+  - Stage2L still has `track_lin_vel_y_exp.weight=0.0`.
+  - Stage2N resolves with `lin_vel_y=(-0.35, 0.35)`, `ang_vel_z=(-0.65, 0.65)`.
+  - Stage2N resolves with `track_lin_vel_y_exp.weight=0.55` and `track_ang_vel_z_exp.weight=1.85`.
