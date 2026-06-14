@@ -3382,3 +3382,47 @@ Validation:
   - `speed_tracking_duration_s` remains `2.5`
   - command and reward values match the intended Stage2J settings.
 - `eval_fixed_speed.py` now supports fixed `--lin_vel_y` and `--ang_vel_z`, so future evals can measure turning and lateral tracking instead of only straight-line speed.
+
+Formal Stage2J run:
+
+- unit:
+  `z1_stage2j_turnrobust_20260614_234947.service`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_23-50-05_z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947.out`
+- deploy yaml snapshot root:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_22-10-27_z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010/model_23575.pt`
+- command:
+
+```bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2j_turnrobust \
+  --num_envs 1024 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-14_22-10-27_z1_sprint_amp_stage2i_hightrack_fromstage2f23550_cmdx3p5_4p5_ref3p5_5p1_track1p7_std1p0_prog0p24_lr4e-5_save25_env1024_20260614_221010 \
+  --checkpoint model_23575.pt \
+  --max_iterations 51 \
+  --run_name z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947 \
+  --logger tensorboard \
+  --deploy_yaml_root /home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2j_turnrobust_fromstage2i23575_cmdx3p25_4p5_cmdy0p25_yaw0p45_trackxy1p8_trackyaw1p45_env1024_20260614_234947
+```
+
+Early online indicators:
+
+| iteration | mean reward | mean episode length | track xy | track yaw | timeout ratio | head/shoulder ratio | speed failure ratio |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 23588 | 4.83 | 280.03 | 0.4965 | 0.1798 | 1.0000 | 0.0000 | 0.0000 |
+| 23591 | 6.89 | 350.68 | 0.5627 | 0.2103 | 0.9792 | 0.0208 | 0.0000 |
+| 23597 | 8.81 | 497.77 | 0.8207 | 0.2983 | 0.9722 | 0.0278 | 0.0000 |
+
+Early interpretation:
+
+- Stage2J starts cleanly from Stage2I and is not showing the previous collapse pattern.
+- `track_lin_vel_xy_exp` and `track_ang_vel_z_exp` both increase during the first ten iterations, which is the intended effect.
+- Speed-tracking failure remains `0.0` so far despite the wider `vy/yaw` command ranges.
