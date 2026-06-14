@@ -2745,3 +2745,113 @@ Human visual play feedback:
 - Keep this checkpoint protected for the next stage:
   `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/model_23550.pt`
 - Next training should build from Stage2F, still without widening beyond `3.0-4.25` until the `3.5 m/s` fixed-speed head/shoulder reset risk is reduced or confirmed harmless in repeated visual/profile tests.
+
+Stage2G hold experiment:
+
+- Task:
+  `magicbot_z1_flat_sprint_amp_stage2g_hold`
+- Purpose:
+  continue from the visually accepted Stage2F policy with a smaller learning rate, holding the same command/reference/reward shape to see whether the high-speed tracking gain consolidates without changing behavior.
+- Inherits Stage2F environment unchanged:
+  - `lin_vel_x=(3.0, 4.25)`
+  - `forward_speed_progress.weight=0.30`
+  - `ang_vel_xy_l2.weight=-0.08`
+  - `body_orientation_l2.weight=-2.5`
+  - `flat_orientation_l2.weight=-1.2`
+  - `head_shoulder_contact_termination_penalty.weight=-240.0`
+  - `motion_prior.enable=True`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.0`
+  - `learning_rate=0.00005`
+  - `save_interval=25`
+- Config validation passed:
+  - task registered
+  - actor obs: `82`
+  - critic obs: `87`
+  - command, reference-motion, posture penalty and AMP settings matched the intended Stage2F hold setup
+- Smoke training passed:
+  - envs: `64`
+  - max iterations: `1`
+  - start checkpoint: Stage2F `model_23550.pt`
+
+Formal run:
+
+```bash
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2g_hold \
+  --num_envs 4096 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431 \
+  --checkpoint model_23550.pt \
+  --max_iterations 26 \
+  --run_name z1_sprint_amp_stage2g_hold_fromstage2f23550_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr5e-5_save25_env4096_20260614_212426 \
+  --logger tensorboard \
+  --deploy_yaml_root /home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2g_hold_fromstage2f23550_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr5e-5_save25_env4096_20260614_212426
+```
+
+Run artifacts:
+
+- stdout log:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2g_hold_fromstage2f23550_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr5e-5_save25_env4096_20260614_212426.out`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_21-24-51_z1_sprint_amp_stage2g_hold_fromstage2f23550_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr5e-5_save25_env4096_20260614_212426`
+- deploy snapshot:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2g_hold_fromstage2f23550_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr5e-5_save25_env4096_20260614_212426/policies/loco_mode/config/LocoMode.yaml`
+- checkpoints:
+  - `model_23550.pt`
+  - `model_23575.pt`
+- fixed-speed eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_21-24-51_z1_sprint_amp_stage2g_hold_fromstage2f23550_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr5e-5_save25_env4096_20260614_212426/eval_fixed_speed_23575_env128_3p5_4p25.txt`
+- command-profile eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_21-24-51_z1_sprint_amp_stage2g_hold_fromstage2f23550_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr5e-5_save25_env4096_20260614_212426/eval_command_profile_23575_3p0_4p25_3p0_env16.txt`
+
+Final online indicators at `model_23575.pt`:
+
+- mean reward: `1.43`
+- mean episode length: `593.24`
+- timeout ratio: `0.9395`
+- head/shoulder contact ratio: `0.0605`
+- body contact ratio: `0.0`
+- speed tracking failure ratio: `0.0`
+- forward speed progress reward contribution: `0.1485`
+- track linear velocity reward contribution: `0.6150`
+
+Fixed-speed comparison, strict repeat conditions (`num_envs=128`, `duration=8`, `warmup=3`):
+
+| checkpoint | target | mean vx | abs err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2F 23550 | 3.50 | 3.4686 | 0.1545 | 3 | 2 | 1 |
+| Stage2G 23575 | 3.50 | 3.4689 | 0.1596 | 5 | 4 | 1 |
+| Stage2F 23550 | 4.00 | 3.6600 | 0.3730 | 10 | 4 | 6 |
+| Stage2G 23575 | 4.00 | 3.6434 | 0.3845 | 11 | 4 | 7 |
+| Stage2F 23550 | 4.25 | 3.4479 | 0.8131 | 29 | 8 | 21 |
+| Stage2G 23575 | 4.25 | 3.4979 | 0.7596 | 26 | 6 | 20 |
+
+Command-profile comparison (`3.0 -> 4.25 -> 3.0`, `16 envs`, warmup `1s @ 3.0`):
+
+| checkpoint | segment target | mean vx | first 1s vx | last 1s vx | abs err | p90 abs vx | mean tilt xy | p90 tilt xy | resets |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2F 23550 | 3.00 | 2.7114 | 2.2088 | 3.0451 | 0.3825 | 3.1678 | 0.0570 | 0.1291 | 0 |
+| Stage2G 23575 | 3.00 | 2.8265 | 2.3780 | 3.1007 | 0.3188 | 3.2167 | 0.0586 | 0.1397 | 0 |
+| Stage2F 23550 | 4.25 | 3.7424 | 3.3346 | 3.9703 | 0.5085 | 4.1058 | 0.0439 | 0.0732 | 0 |
+| Stage2G 23575 | 4.25 | 3.7217 | 3.3533 | 3.9076 | 0.5293 | 4.0805 | 0.0486 | 0.0797 | 0 |
+| Stage2F 23550 | 3.00 | 3.2323 | 3.5066 | 3.0762 | 0.2575 | 3.6836 | 0.0360 | 0.0590 | 0 |
+| Stage2G 23575 | 3.00 | 3.2575 | 3.5103 | 3.1134 | 0.2735 | 3.6497 | 0.0352 | 0.0567 | 0 |
+
+Stage2G conclusion:
+
+- Stage2G is stable in the command-profile rollout and still has `0` resets across `3.0 -> 4.25 -> 3.0`.
+- It slightly improves the strict `4.25 m/s` fixed-speed point:
+  - mean vx `3.4479 -> 3.4979`
+  - resets `29 -> 26`
+  - head/shoulder resets `8 -> 6`
+  - speed-tracking resets `21 -> 20`
+- It is slightly worse at `3.5` and `4.0`, and its command-profile `4.25` last-second mean is lower than Stage2F:
+  - Stage2F `3.9703 m/s`
+  - Stage2G `3.9076 m/s`
+- Therefore Stage2G `model_23575.pt` is a secondary high-speed candidate, not a replacement for Stage2F yet.
+- Current primary candidate remains the visually accepted Stage2F checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_20-34-59_z1_sprint_amp_stage2f_posture_fromstage2e23525_cmdx3p0_4p25_ref3p0_4p8_prog0p30_amp0p08_lr7p5e-5_save25_env4096_20260614_203431/model_23550.pt`
+- Do not continue widening speed range from Stage2G until a visual play check confirms it preserves the good Stage2F gait.
