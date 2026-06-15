@@ -4110,3 +4110,52 @@ Stage2N checkpoint choice:
   - do not continue Stage2N directly.
   - keep `track_lin_vel_y_exp`, but reduce its weight and shrink the command expansion in the next stage.
   - use Stage2L `model_23675.pt` again as the base for the next balanced agility run.
+
+## Stage2O: balanced lateral/yaw agility
+
+Purpose:
+
+- Keep the useful finding from Stage2N: explicit lateral tracking helps y/yaw command following.
+- Reduce the aggressive settings that degraded straight-line high-speed tracking.
+- Build again from Stage2L `model_23675.pt`, not from Stage2N.
+
+Config changes:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2o_balancedagility`
+- base: `MagicBotZ1FlatSprintAMPStage2LStabilityAnchorEnvCfg`
+- command range:
+  - `lin_vel_x=(3.40, 4.55)`
+  - `lin_vel_y=(-0.25, 0.25)`
+  - `ang_vel_z=(-0.45, 0.45)`
+- reference motion:
+  - `min_command_speed=3.4`
+  - `max_reference_speed=5.2`
+  - `speed_match_tolerance=0.80`
+- reward tuning:
+  - `track_lin_vel_xy_exp.weight=1.90`
+  - `track_lin_vel_xy_exp.std=1.00`
+  - `track_lin_vel_y_exp.weight=0.25`
+  - `track_lin_vel_y_exp.std=0.40`
+  - `track_ang_vel_z_exp.weight=1.55`
+  - `track_ang_vel_z_exp.std=0.55`
+  - `forward_speed_progress.weight=0.24`
+  - `forward_speed_progress.min_command_x=3.4`
+  - `head_shoulder_contact_termination_penalty.weight=-250.0`
+- retained safety:
+  - `speed_tracking_duration_s=2.5`
+- agent:
+  - `learning_rate=1.5e-5`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.4`
+  - `save_interval=25`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+  - `legged_lab/mdp/rewards.py`
+- registry check passed with `AppLauncher(headless=True)`:
+  - Stage2O resolves with `lin_vel_y=(-0.25, 0.25)` and `ang_vel_z=(-0.45, 0.45)`.
+  - Stage2O resolves with `track_lin_vel_y_exp.weight=0.25` and `track_ang_vel_z_exp.weight=1.55`.
+  - Stage2O keeps `speed_tracking_duration_s=2.5`.
