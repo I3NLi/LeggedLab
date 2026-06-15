@@ -5936,3 +5936,60 @@ Validation:
   - `schedule=fixed`;
   - `reward_min_command_speed=2.75`;
   - `AMP/mean_step_gate=0.4925`.
+
+Stage2Z training result:
+
+- run:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-43-01_z1_sprint_amp_stage2z_highstart_from23000_cmdx2p0_3p5_instantcmd_resetopt_env1024_20260615_184245`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2z_highstart_from23000_cmdx2p0_3p5_instantcmd_resetopt_env1024_20260615_184245.out`
+- final checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-43-01_z1_sprint_amp_stage2z_highstart_from23000_cmdx2p0_3p5_instantcmd_resetopt_env1024_20260615_184245/model_23024.pt`
+
+Final online indicators from TensorBoard at step `23024`:
+
+| metric | value |
+| --- | ---: |
+| mean reward | 1.1546 |
+| mean episode length | 452.5400 |
+| timeout ratio | 0.3056 |
+| head/shoulder ratio | 0.0417 |
+| speed failure ratio | 0.6528 |
+| track xy | 0.1635 |
+| track y | 0.0747 |
+| track yaw | 0.3327 |
+| AMP step gate | 0.4023 |
+| AMP replay gate | 0.4023 |
+| AMP reward | 0.0009 |
+| learning rate | 0.00003 |
+
+Straight fixed-speed eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-43-01_z1_sprint_amp_stage2z_highstart_from23000_cmdx2p0_3p5_instantcmd_resetopt_env1024_20260615_184245/eval_fixed_speed_23024_env64_2p5_3p5.txt`
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2Z 23024 | 2.50 | 0.9944 | 1.5077 | 1.5224 | 2.6795 | 43 | 3 | 40 |
+| Stage2Z 23024 | 3.00 | 0.2603 | 2.7399 | 2.7474 | 3.2359 | 57 | 1 | 56 |
+| Stage2Z 23024 | 3.50 | -0.0193 | 3.5193 | 3.5255 | 3.8082 | 56 | 3 | 53 |
+
+Low-speed push recovery eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-43-01_z1_sprint_amp_stage2z_highstart_from23000_cmdx2p0_3p5_instantcmd_resetopt_env1024_20260615_184245/eval_push_recovery_23024_low_vx0_1_push1_env16.txt`
+
+| checkpoint | target vx | recovery ratio | xy abs err | p90 xy err | p10 height | resets | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2Z 23024 | 0.0 | 1.0000 | 0.2938 | 0.8292 | 0.6839 | 0 | 0 |
+| Stage2Z 23024 | 0.5 | 0.9583 | 0.3398 | 0.8828 | 0.6882 | 0 | 0 |
+| Stage2Z 23024 | 1.0 | 0.9167 | 0.3584 | 0.9054 | 0.6836 | 0 | 0 |
+
+Decision:
+
+- Reject Stage2Z as a sprint mainline; it still fails fixed high-speed start/tracking.
+- It preserves low-speed push recovery very well, so the low-speed robustness objective is not the bottleneck in this branch.
+- Baseline `model_23000.pt` already had weak fixed-speed high-start behavior (`2.5m/s` mean vx around `1.08`, `4.0/5.0m/s` near zero), so Stage2Z did not meaningfully solve the missing high-start behavior.
+- Next direction should not be "continue Stage2Z longer" without changing mechanism.
+- Better next mechanism:
+  train a short command-profile/ramp phase that explicitly rewards acceleration progress before the speed-failure timer expires, or resume from a high-speed-capable checkpoint and add a low-speed robustness preservation term/gate.
