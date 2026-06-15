@@ -4841,3 +4841,14 @@ Validation:
 - AMP gate smoke passed:
   - commands tested: straight high speed, small y/yaw, high y/yaw, max yaw, low speed;
   - output gate: `[1.0, 1.0, 0.0, 0.0, 0.0]`.
+- First Stage2S launch attempt:
+  - unit: `z1_stage2s_gatedprior_20260615_133118.service`
+  - run directory:
+    `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-31-34_z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133118`
+  - result: failed before first training iteration.
+  - error: `RuntimeError: AMP replay buffer is empty.`
+  - cause: AMP replay insertion used the full reward gate, including the speed gate. During startup, command slew can keep command speed below `reward_min_command_speed`, so no policy AMP samples were inserted before the discriminator update.
+  - fix: keep AMP reward gated by speed + y/yaw, but gate AMP replay insertion only by y/yaw command. Added `AMP/mean_step_replay_gate` logging.
+  - `py_compile` passed after the fix for:
+    - `legged_lab/amp/runner.py`
+    - `legged_lab/amp/ppo.py`

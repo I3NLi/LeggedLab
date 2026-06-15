@@ -63,6 +63,7 @@ class AMPOnPolicyRunner(OnPolicyRunner):
             amp_step_reward_sum = 0.0
             amp_step_logit_sum = 0.0
             amp_step_gate_sum = 0.0
+            amp_step_replay_gate_sum = 0.0
             amp_step_count = 0
 
             with torch.inference_mode():
@@ -85,6 +86,7 @@ class AMPOnPolicyRunner(OnPolicyRunner):
                         command_speeds=command_speeds,
                         command_values=command_values,
                     )
+                    amp_replay_gate = self.alg.amp_reward_gate(command_speeds=None, command_values=command_values)
 
                     self.alg.process_env_step(
                         obs,
@@ -92,7 +94,7 @@ class AMPOnPolicyRunner(OnPolicyRunner):
                         dones,
                         extras,
                         amp_obs_frames=amp_obs_frames,
-                        amp_replay_gate=amp_gate,
+                        amp_replay_gate=amp_replay_gate,
                     )
 
                     done_ids = dones.nonzero(as_tuple=False).flatten()
@@ -105,6 +107,7 @@ class AMPOnPolicyRunner(OnPolicyRunner):
                     amp_step_reward_sum += float(amp_rewards.mean().item())
                     amp_step_logit_sum += float(amp_logits.mean().item())
                     amp_step_gate_sum += float(amp_gate.mean().item())
+                    amp_step_replay_gate_sum += float(amp_replay_gate.mean().item())
                     amp_step_count += 1
 
                     if self.log_dir is not None:
@@ -145,6 +148,7 @@ class AMPOnPolicyRunner(OnPolicyRunner):
             mean_amp_step_reward = amp_step_reward_sum / max(amp_step_count, 1)
             mean_amp_step_logit = amp_step_logit_sum / max(amp_step_count, 1)
             mean_amp_step_gate = amp_step_gate_sum / max(amp_step_count, 1)
+            mean_amp_step_replay_gate = amp_step_replay_gate_sum / max(amp_step_count, 1)
 
             stop = time.time()
             learn_time = stop - start
@@ -174,6 +178,7 @@ class AMPOnPolicyRunner(OnPolicyRunner):
         self.writer.add_scalar("AMP/mean_step_reward", locs["mean_amp_step_reward"], locs["it"])
         self.writer.add_scalar("AMP/mean_step_logit", locs["mean_amp_step_logit"], locs["it"])
         self.writer.add_scalar("AMP/mean_step_gate", locs["mean_amp_step_gate"], locs["it"])
+        self.writer.add_scalar("AMP/mean_step_replay_gate", locs["mean_amp_step_replay_gate"], locs["it"])
 
     def save(self, path: str, infos: dict | None = None) -> None:
         saved_dict = {
