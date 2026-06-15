@@ -720,6 +720,33 @@ class MagicBotZ1FlatSprintAMPStage2UYawSpecialistEnvCfg(MagicBotZ1FlatSprintAMPS
 
 
 @configclass
+class MagicBotZ1FlatSprintAMPStage2VYawTransferEnvCfg(MagicBotZ1FlatSprintAMPStage2UYawSpecialistEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.ranges.lin_vel_x = (3.00, 4.25)
+        self.commands.ranges.lin_vel_y = (-0.28, 0.28)
+        self.commands.ranges.ang_vel_z = (-0.85, 0.85)
+        self.commands.straight_command_prob = 0.35
+        self.commands.yaw_only_command_prob = 0.45
+        self.reference_motion.min_command_speed = 3.00
+        self.reference_motion.max_reference_speed = 5.00
+        self.reference_motion.speed_match_tolerance = 0.90
+        self.reward.track_lin_vel_xy_exp.weight = 1.95
+        self.reward.track_lin_vel_xy_exp.params["std"] = 0.95
+        self.reward.track_lin_vel_y_exp.weight = 0.25
+        self.reward.track_lin_vel_y_exp.params["std"] = 0.45
+        self.reward.lateral_speed_progress.weight = 0.08
+        self.reward.track_ang_vel_z_exp.weight = 2.60
+        self.reward.track_ang_vel_z_exp.params["std"] = 0.35
+        self.reward.yaw_rate_progress.weight = 0.75
+        self.reward.yaw_rate_progress.params["min_command_abs"] = 0.25
+        self.reward.forward_speed_progress.weight = 0.22
+        self.reward.forward_speed_progress.params["min_command_x"] = 3.00
+        self.reward.joint_deviation_hip.weight = -0.12
+        self.reward.joint_deviation_arms.weight = -0.18
+
+
+@configclass
 class MagicBotZ1FlatAgentCfg(G1FlatAgentCfg):
     experiment_name: str = "magicbot_z1_flat"
     wandb_project: str = "magicbot_z1_flat"
@@ -1064,6 +1091,26 @@ class MagicBotZ1FlatSprintAMPStage2UYawSpecialistAgentCfg(MagicBotZ1FlatSprintAM
         self.algorithm.learning_rate = 5.0e-6
         self.motion_prior.reward_coef = 0.08
         self.motion_prior.reward_min_command_speed = 2.75
+        self.motion_prior.reward_max_command_y_abs = 0.12
+        self.motion_prior.reward_command_y_gate_width = 0.13
+        self.motion_prior.reward_max_command_yaw_abs = 0.20
+        self.motion_prior.reward_command_yaw_gate_width = 0.25
+        self.save_interval = 25
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage2VYawTransferAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = (
+        "z1_sprint_amp_stage2v_yawtransfer_cmdx3p0_4p25_"
+        "cmdy0p28_yaw0p85_straight0p35_yawonly0p45_yawprog0p75_"
+        "ampgate_y0p12_yaw0p20_lr4e-6"
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.learning_rate = 4.0e-6
+        self.motion_prior.reward_coef = 0.08
+        self.motion_prior.reward_min_command_speed = 3.00
         self.motion_prior.reward_max_command_y_abs = 0.12
         self.motion_prior.reward_command_y_gate_width = 0.13
         self.motion_prior.reward_max_command_yaw_abs = 0.20

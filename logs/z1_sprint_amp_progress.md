@@ -5252,3 +5252,44 @@ Stage2U checkpoint choice:
   - do not continue Stage2U directly as the sprint mainline;
   - keep it as evidence that lower-speed yaw practice can teach sustained yaw;
   - next branch should either restore high-speed x pressure while retaining a smaller yaw practice slice, or implement command-conditioned AMP/reference sampling so yaw commands can use the turning segments in `sprint1_subject2` without fighting straight-sprint behavior.
+
+### 2026-06-15 Stage2V Yaw Transfer: move Stage2U yaw gains back toward sprint speed
+
+Reason:
+
+- Stage2U improved low-speed strong-turn yaw, especially at `vx=3.0`, but weakened straight and standard-turn forward tracking at `3.5-4.0`.
+- The next low-risk step is a short transfer run from Stage2U that restores forward-speed pressure while keeping a smaller yaw practice slice.
+
+Code changes:
+
+- Added task: `magicbot_z1_flat_sprint_amp_stage2v_yawtransfer`.
+- Starts from Stage2U settings but changes:
+  - `lin_vel_x=(3.00, 4.25)`;
+  - `lin_vel_y=(-0.28, 0.28)`;
+  - `ang_vel_z=(-0.85, 0.85)`;
+  - `straight_command_prob=0.35`;
+  - `yaw_only_command_prob=0.45`;
+  - `reference_motion.min_command_speed=3.00`;
+  - `reference_motion.max_reference_speed=5.00`;
+  - `track_lin_vel_xy_exp.weight=1.95`, `std=0.95`;
+  - `track_lin_vel_y_exp.weight=0.25`, `std=0.45`;
+  - `lateral_speed_progress.weight=0.08`;
+  - `track_ang_vel_z_exp.weight=2.60`, `std=0.35`;
+  - `yaw_rate_progress.weight=0.75`;
+  - `forward_speed_progress.weight=0.22`;
+  - `joint_deviation_hip.weight=-0.12`;
+  - `joint_deviation_arms.weight=-0.18`.
+- AMP gate:
+  - `reward_min_command_speed=3.00`;
+  - `reward_max_command_y_abs=0.12`;
+  - `reward_command_y_gate_width=0.13`;
+  - `reward_max_command_yaw_abs=0.20`;
+  - `reward_command_yaw_gate_width=0.25`.
+
+Training plan:
+
+- Start from Stage2U:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_14-16-46_z1_sprint_amp_stage2u_yawspecialist_fromstage2s23750_cmdx2p25_4p0_cmdy0p30_yaw0p95_straight0p20_yawonly0p55_yawprog0p95_ampgate_y0p12_yaw0p20_env1024_20260615_141614/model_23774.pt`
+- First gate: 25 iterations.
+- Success condition:
+  regain Stage2S-like straight `3.5-4.0` tracking while keeping Stage2U's strong-turn yaw improvement.
