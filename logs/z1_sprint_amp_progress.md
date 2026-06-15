@@ -4310,3 +4310,90 @@ Validation:
   - `straight_count=12 total=32`
   - `masked_yaw_max_abs=0.000000`
   - `turn_abs_mean=0.246254`
+
+Formal Stage2P run:
+
+- unit:
+  `z1_stage2p_mixedcommand_20260615_123800.service`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-38-15_z1_sprint_amp_stage2p_mixedcommand_fromstage2l23675_cmdx3p35_4p55_cmdy0p35_yaw0p65_straight0p45_env1024_20260615_123800`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2p_mixedcommand_fromstage2l23675_cmdx3p35_4p55_cmdy0p35_yaw0p65_straight0p45_env1024_20260615_123800.out`
+- deploy yaml snapshot root:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2p_mixedcommand_fromstage2l23675_cmdx3p35_4p55_cmdy0p35_yaw0p65_straight0p45_env1024_20260615_123800`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_00-25-33_z1_sprint_amp_stage2l_stabilityanchor_fromstage2k23650_cmdx3p4_4p55_cmdy0p18_yaw0p32_trackxy1p85_prog0p26_env1024_20260615_002517/model_23675.pt`
+- produced checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-38-15_z1_sprint_amp_stage2p_mixedcommand_fromstage2l23675_cmdx3p35_4p55_cmdy0p35_yaw0p65_straight0p45_env1024_20260615_123800/model_23700.pt`
+
+Online indicators:
+
+| iteration | mean reward | mean episode length | straight prob | track xy | track y | progress | track yaw | timeout ratio | head/shoulder ratio | speed failure ratio |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 23676 | -3.69 | 27.07 | 0.4500 | 0.0535 | 0.0100 | 0.0000 | 0.0195 | 0.7083 | 0.2917 | 0.0000 |
+| 23679 | -2.62 | 74.38 | 0.4500 | 0.1676 | 0.0338 | 0.0051 | 0.0639 | 0.9583 | 0.0417 | 0.0000 |
+| 23682 | 2.70 | 141.77 | 0.4500 | 0.2340 | 0.0472 | 0.0176 | 0.0990 | 0.8333 | 0.1667 | 0.0000 |
+| 23685 | 4.70 | 206.49 | 0.4500 | 0.3625 | 0.0725 | 0.0349 | 0.1461 | 0.8958 | 0.1042 | 0.0000 |
+| 23688 | 7.36 | 277.34 | 0.4500 | 0.4766 | 0.0928 | 0.0495 | 0.1888 | 0.9028 | 0.0972 | 0.0000 |
+| 23691 | 9.61 | 351.62 | 0.4500 | 0.6239 | 0.1194 | 0.0695 | 0.2429 | 0.9861 | 0.0139 | 0.0000 |
+| 23694 | 13.06 | 425.29 | 0.4500 | 0.7344 | 0.1451 | 0.0865 | 0.2958 | 1.0000 | 0.0000 | 0.0000 |
+| 23697 | 14.64 | 495.56 | 0.4500 | 0.7123 | 0.1400 | 0.0857 | 0.2768 | 0.8333 | 0.1667 | 0.0000 |
+| 23700 | 14.51 | 542.29 | 0.4500 | 0.9300 | 0.1849 | 0.1132 | 0.3615 | 0.9083 | 0.0917 | 0.0000 |
+
+Stage2P eval artifacts:
+
+- straight eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-38-15_z1_sprint_amp_stage2p_mixedcommand_fromstage2l23675_cmdx3p35_4p55_cmdy0p35_yaw0p65_straight0p45_env1024_20260615_123800/eval_fixed_speed_23700_env64_3p5_4p5.txt`
+- standard turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-38-15_z1_sprint_amp_stage2p_mixedcommand_fromstage2l23675_cmdx3p35_4p55_cmdy0p35_yaw0p65_straight0p45_env1024_20260615_123800/eval_fixed_command_23700_vy0p20_wz0p35_env32.txt`
+- stronger turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-38-15_z1_sprint_amp_stage2p_mixedcommand_fromstage2l23675_cmdx3p35_4p55_cmdy0p35_yaw0p65_straight0p45_env1024_20260615_123800/eval_fixed_command_23700_vy0p35_wz0p60_env32.txt`
+
+Straight eval comparison (`vy=0.0`, `wz=0.0`, `num_envs=64`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2L 23675 | 3.50 | 3.4973 | 0.2262 | 0.2799 | 0.3926 | 1 | 1 | 0 |
+| Stage2P 23700 | 3.50 | 3.5052 | 0.1971 | 0.2474 | 0.3601 | 3 | 3 | 0 |
+| Stage2L 23675 | 4.00 | 3.5747 | 0.4764 | 0.5221 | 1.2889 | 3 | 3 | 0 |
+| Stage2P 23700 | 4.00 | 3.6205 | 0.4236 | 0.4674 | 1.0306 | 5 | 5 | 0 |
+| Stage2L 23675 | 4.25 | 3.4400 | 0.8239 | 0.8608 | 2.3625 | 6 | 5 | 1 |
+| Stage2P 23700 | 4.25 | 3.4088 | 0.8562 | 0.8945 | 2.5486 | 5 | 3 | 2 |
+| Stage2L 23675 | 4.50 | 3.1670 | 1.3340 | 1.3607 | 3.4682 | 3 | 3 | 0 |
+| Stage2P 23700 | 4.50 | 3.1587 | 1.3445 | 1.3685 | 3.9636 | 4 | 1 | 3 |
+
+Standard turning eval (`vy=0.20`, `wz=0.35`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2L 23675 | 3.50 | 3.5098 | 0.1948 | 0.2476 | 0.1438 | 0.1170 | 0.3947 | 0.2056 | 0.3513 | 0 | 0 | 0 |
+| Stage2P 23700 | 3.50 | 3.3981 | 0.2056 | 0.2302 | 0.2423 | 0.1226 | 0.4333 | 0.2979 | 0.4079 | 2 | 2 | 0 |
+| Stage2L 23675 | 4.00 | 3.5390 | 0.2064 | 0.2500 | 0.4846 | 0.1413 | 0.4488 | 0.5326 | 1.1718 | 2 | 2 | 0 |
+| Stage2P 23700 | 4.00 | 3.5752 | 0.2149 | 0.2161 | 0.4474 | 0.1302 | 0.4341 | 0.4882 | 1.0765 | 1 | 1 | 0 |
+| Stage2L 23675 | 4.25 | 3.4509 | 0.1980 | 0.2408 | 0.8046 | 0.1537 | 0.4513 | 0.8385 | 2.1565 | 3 | 3 | 0 |
+| Stage2P 23700 | 4.25 | 3.6176 | 0.1910 | 0.2189 | 0.6375 | 0.1407 | 0.4451 | 0.6711 | 1.4894 | 1 | 1 | 0 |
+
+Stronger turning eval (`vy=0.35`, `wz=0.60`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2N 23700 | 3.50 | 3.4933 | 0.2881 | 0.3931 | 0.1890 | 0.1338 | 0.4483 | 0.2566 | 0.3829 | 2 | 2 | 0 |
+| Stage2P 23700 | 3.50 | 3.2861 | 0.2642 | 0.3333 | 0.3511 | 0.1724 | 0.5466 | 0.4288 | 0.7774 | 7 | 7 | 0 |
+| Stage2N 23700 | 4.00 | 3.5754 | 0.2999 | 0.3653 | 0.4437 | 0.1484 | 0.4940 | 0.4936 | 1.1496 | 2 | 2 | 0 |
+| Stage2P 23700 | 4.00 | 3.4306 | 0.2820 | 0.3546 | 0.5872 | 0.1819 | 0.5787 | 0.6427 | 1.6923 | 7 | 7 | 0 |
+| Stage2N 23700 | 4.25 | 3.4882 | 0.2888 | 0.3826 | 0.7645 | 0.1614 | 0.5436 | 0.7994 | 1.7959 | 3 | 3 | 0 |
+| Stage2P 23700 | 4.25 | 3.4156 | 0.2623 | 0.3033 | 0.8384 | 0.1852 | 0.5795 | 0.8773 | 2.1819 | 4 | 3 | 1 |
+
+Stage2P checkpoint choice:
+
+- `model_23700.pt` is a useful engineering step, but not a final mainline checkpoint.
+- Mixed command sampling helps preserve straight and standard-turn velocity tracking better than Stage2N/O:
+  - straight `4.0` vx abs error improved vs Stage2L (`0.4764 -> 0.4236`);
+  - standard turning `4.25` improved mean vx (`3.4509 -> 3.6176`) and reset count (`3 -> 1`).
+- It does not yet solve yaw:
+  - standard `wz=0.35` still tracks only around `0.22`;
+  - strong `wz=0.60` remains around `0.30-0.35` with high head/shoulder resets.
+- Recommendation:
+  - keep the `straight_command_prob` infrastructure.
+  - do not use Stage2P as the deployment/play checkpoint yet.
+  - next step should be yaw-specific: either increase yaw command probability separately from lateral y, or add a yaw-only/turn-in-place style branch while retaining the straight-command mixture.
