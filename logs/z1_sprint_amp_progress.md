@@ -6116,3 +6116,79 @@ First gate:
 - strong-turn eval at `vy=0.20,wz=0.35`;
 - low-speed push recovery eval at `vx=0.0/0.5/1.0`;
 - continue only if it preserves Stage1C low/mid-speed and improves `3.5-4.0m/s` without collapsing push recovery.
+
+### 2026-06-15 Stage2AA First Gate Result
+
+Run:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2aa_stage1c_extend`
+- run:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-02-09_z1_sprint_amp_stage2aa_stage1c_extend_from23400_cmdx-1p0_4p1_push1p0_env1024_20260615_190153`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2aa_stage1c_extend_from23400_cmdx-1p0_4p1_push1p0_env1024_20260615_190153.out`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/model_23400.pt`
+- final checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-02-09_z1_sprint_amp_stage2aa_stage1c_extend_from23400_cmdx-1p0_4p1_push1p0_env1024_20260615_190153/model_23424.pt`
+
+Final online indicators from TensorBoard at step `23424`:
+
+| metric | value |
+| --- | ---: |
+| mean reward | 11.2439 |
+| mean episode length | 537.9000 |
+| timeout ratio | 0.9167 |
+| head/shoulder ratio | 0.0833 |
+| body contact ratio | 0.0000 |
+| speed failure ratio | 0.0000 |
+| track xy | 0.7660 |
+| track y | 0.1070 |
+| track yaw | 0.3661 |
+| forward speed progress | 0.0096 |
+| yaw progress | 0.0048 |
+| AMP step gate | 0.1796 |
+| AMP replay gate | 0.1796 |
+| AMP step reward | 0.0014 |
+| learning rate | 0.00005 |
+
+Straight fixed-speed eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-02-09_z1_sprint_amp_stage2aa_stage1c_extend_from23400_cmdx-1p0_4p1_push1p0_env1024_20260615_190153/eval_fixed_speed_23424_env64_2p5_4p0.txt`
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AA 23424 | 2.50 | 2.4441 | 0.1091 | 0.1502 | 0.2598 | 2 | 2 | 0 |
+| Stage2AA 23424 | 3.00 | 2.7052 | 0.3339 | 0.3853 | 0.6512 | 4 | 2 | 2 |
+| Stage2AA 23424 | 3.50 | 2.8615 | 0.6607 | 0.7167 | 2.4428 | 9 | 6 | 3 |
+| Stage2AA 23424 | 4.00 | 2.1280 | 1.8802 | 1.9176 | 4.4962 | 19 | 7 | 12 |
+
+Moderate-turn fixed-command eval:
+
+- command: `vy=0.20`, `wz=0.35`
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-02-09_z1_sprint_amp_stage2aa_stage1c_extend_from23400_cmdx-1p0_4p1_push1p0_env1024_20260615_190153/eval_fixed_command_23424_vy0p20_wz0p35_env32.txt`
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AA 23424 | 3.00 | 2.8551 | 0.1455 | 0.6105 | 0.1872 | 0.2579 | 0.4097 | 2 | 2 | 0 |
+| Stage2AA 23424 | 3.50 | 2.9425 | 0.1645 | 0.5625 | 0.5753 | 0.6346 | 1.9381 | 12 | 12 | 0 |
+| Stage2AA 23424 | 4.00 | 3.1745 | 0.1599 | 0.5216 | 0.8323 | 0.8842 | 2.1581 | 6 | 6 | 0 |
+
+Low-speed push recovery eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-02-09_z1_sprint_amp_stage2aa_stage1c_extend_from23400_cmdx-1p0_4p1_push1p0_env1024_20260615_190153/eval_push_recovery_23424_low_vx0_1_push1_env16.txt`
+
+| checkpoint | target vx | recovery ratio | xy abs err | p90 xy err | p10 height | resets | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AA 23424 | 0.0 | 0.9792 | 0.3806 | 0.9161 | 0.6775 | 0 | 0 |
+| Stage2AA 23424 | 0.5 | 0.7917 | 0.4321 | 0.8742 | 0.6835 | 0 | 0 |
+| Stage2AA 23424 | 1.0 | 0.9167 | 0.4020 | 0.8705 | 0.6783 | 0 | 0 |
+
+Decision:
+
+- Keep Stage2AA `model_23424.pt` as a useful checkpoint.
+- It preserves most low-speed push recovery and improves usable `3.5m/s` behavior compared with the older Stage1C record.
+- It is not ready to declare Stage 2 complete: straight `4.0m/s` still has high speed-tracking resets, and high-speed turn tests show noticeable head/shoulder resets.
+- Next action should be another short cautious continuation from `model_23424.pt`, or a small Stage2AB variant focused on reducing head/shoulder resets while not suppressing stride.
