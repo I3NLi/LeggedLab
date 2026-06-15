@@ -173,7 +173,11 @@ class BaseEnv(VecEnv):
         self._command_slew_enabled = bool(torch.any(self._command_slew_rate > 0.0).item())
         self._command_buf = torch.zeros((self.num_envs, 3), device=self.device, dtype=torch.float)
         self._straight_command_prob = float(np.clip(getattr(self.cfg.commands, "straight_command_prob", 0.0), 0.0, 1.0))
+        self._yaw_only_command_prob = float(
+            np.clip(getattr(self.cfg.commands, "yaw_only_command_prob", 0.0), 0.0, 1.0 - self._straight_command_prob)
+        )
         self._straight_command_env_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self._yaw_only_command_env_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self._termination_contact_delay_s = max(0.0, float(self.cfg.robot.terminate_contacts_delay_s))
         self._termination_contact_recovery_height = float(self.cfg.robot.terminate_contacts_recovery_height)
         self._termination_contact_enabled = True
@@ -185,6 +189,7 @@ class BaseEnv(VecEnv):
             "Config/command_slew_rate_y": float(self._command_slew_rate[1].item()),
             "Config/command_slew_rate_yaw": float(self._command_slew_rate[2].item()),
             "Config/straight_command_prob": float(self._straight_command_prob),
+            "Config/yaw_only_command_prob": float(self._yaw_only_command_prob),
         }
         if self.reference_motion is not None:
             self._static_log_info.update(
@@ -363,8 +368,8 @@ class BaseEnv(VecEnv):
         self.extras["time_outs"] = self.time_out_buf
 
         self.command_generator.reset(env_ids)
-        self._resample_straight_command_mask(env_ids)
-        self._apply_straight_command_mask()
+        self._resample_command_mode_masks(env_ids)
+        self._apply_command_mode_masks()
         if self._command_slew_enabled:
             self._command_buf[env_ids] = 0.0
         self._reset_reference_motion(env_ids)
@@ -439,29 +444,36 @@ class BaseEnv(VecEnv):
         if len(resample_env_ids) > 0:
             self.command_generator._resample(resample_env_ids)
             if self.command_metrics_enabled:
-                self._resample_straight_command_mask(resample_env_ids)
+                self._resample_command_mode_masks(resample_env_ids)
         self.command_generator._update_command()
         if self.command_metrics_enabled:
-            self._apply_straight_command_mask()
+            self._apply_command_mode_masks()
         self._update_command_slew()
 
-    def _resample_straight_command_mask(self, env_ids):
+    def _resample_command_mode_masks(self, env_ids):
         if len(env_ids) == 0:
             return
-        if self._straight_command_prob <= 0.0:
+        if self._straight_command_prob <= 0.0 and self._yaw_only_command_prob <= 0.0:
             self._straight_command_env_buf[env_ids] = False
+            self._yaw_only_command_env_buf[env_ids] = False
             return
-        self._straight_command_env_buf[env_ids] = (
-            torch.rand(len(env_ids), device=self.device) < self._straight_command_prob
+        command_mode_sample = torch.rand(len(env_ids), device=self.device)
+        straight_mask = command_mode_sample < self._straight_command_prob
+        yaw_only_mask = (command_mode_sample >= self._straight_command_prob) & (
+            command_mode_sample < self._straight_command_prob + self._yaw_only_command_prob
         )
+        self._straight_command_env_buf[env_ids] = straight_mask
+        self._yaw_only_command_env_buf[env_ids] = yaw_only_mask
 
-    def _apply_straight_command_mask(self):
-        if self._straight_command_prob <= 0.0:
+    def _apply_command_mode_masks(self):
+        if self._straight_command_prob <= 0.0 and self._yaw_only_command_prob <= 0.0:
             return
         straight_env_ids = self._straight_command_env_buf.nonzero(as_tuple=False).flatten()
-        if len(straight_env_ids) == 0:
-            return
-        self.command_generator.vel_command_b[straight_env_ids, 1:3] = 0.0
+        if len(straight_env_ids) > 0:
+            self.command_generator.vel_command_b[straight_env_ids, 1:3] = 0.0
+        yaw_only_env_ids = self._yaw_only_command_env_buf.nonzero(as_tuple=False).flatten()
+        if len(yaw_only_env_ids) > 0:
+            self.command_generator.vel_command_b[yaw_only_env_ids, 1] = 0.0
 
     def _update_command_slew(self):
         if not self._command_slew_enabled:

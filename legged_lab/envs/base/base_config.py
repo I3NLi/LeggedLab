@@ -125,6 +125,8 @@ class CommandsCfg:
     command_slew_rate: tuple = (0.0, 0.0, 0.0)
     # Probability that a resampled moving command keeps x velocity but zeros y and yaw for straight retention.
     straight_command_prob: float = 0.0
+    # Probability that a resampled moving command keeps x and yaw but zeros y for yaw-specific practice.
+    yaw_only_command_prob: float = 0.0
     debug_vis: bool = False
     ranges: CommandRangesCfg = CommandRangesCfg()
 

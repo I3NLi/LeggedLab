@@ -4397,3 +4397,77 @@ Stage2P checkpoint choice:
   - keep the `straight_command_prob` infrastructure.
   - do not use Stage2P as the deployment/play checkpoint yet.
   - next step should be yaw-specific: either increase yaw command probability separately from lateral y, or add a yaw-only/turn-in-place style branch while retaining the straight-command mixture.
+
+## Stage2Q: yaw-specific mixed command sampling
+
+Purpose:
+
+- Keep Stage2P's useful straight-retention infrastructure.
+- Address the remaining failure mode directly: yaw command tracking stays weak even when lateral/yaw ranges are widened.
+- Decouple yaw practice from lateral y by adding a yaw-only command mode.
+
+Base command sampler change:
+
+- Added `CommandsCfg.yaw_only_command_prob`, default `0.0`.
+- Command mode probabilities are mutually exclusive:
+  - `straight_command_prob`: keep x velocity, zero y and yaw.
+  - `yaw_only_command_prob`: keep x and yaw, zero y.
+  - remaining probability: keep full x/y/yaw sample.
+- The sum is clipped so yaw-only cannot exceed the remaining non-straight probability.
+- As before, mode masks are applied only when `command_metrics_enabled=True`, so fixed eval/play/manual commands are not modified.
+
+Config changes:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2q_yawfocus`
+- base: `MagicBotZ1FlatSprintAMPStage2PMixedCommandEnvCfg`
+- command range:
+  - `lin_vel_x=(3.35, 4.55)`
+  - `lin_vel_y=(-0.30, 0.30)`
+  - `ang_vel_z=(-0.75, 0.75)`
+  - `straight_command_prob=0.40`
+  - `yaw_only_command_prob=0.35`
+- command mix target:
+  - roughly 40% straight x-only
+  - roughly 35% yaw-only
+  - roughly 25% full lateral/yaw
+- reference motion:
+  - `min_command_speed=3.35`
+  - `max_reference_speed=5.2`
+  - `speed_match_tolerance=0.90`
+- reward tuning:
+  - `track_lin_vel_xy_exp.weight=1.95`
+  - `track_lin_vel_xy_exp.std=0.95`
+  - `track_lin_vel_y_exp.weight=0.35`
+  - `track_lin_vel_y_exp.std=0.40`
+  - `track_ang_vel_z_exp.weight=2.10`
+  - `track_ang_vel_z_exp.std=0.45`
+  - `forward_speed_progress.weight=0.24`
+  - `forward_speed_progress.min_command_x=3.35`
+  - `head_shoulder_contact_termination_penalty.weight=-280.0`
+- retained safety:
+  - `speed_tracking_duration_s=2.5`
+- agent:
+  - `learning_rate=1e-5`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.35`
+  - `save_interval=25`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/base/base_config.py`
+  - `legged_lab/envs/base/base_env.py`
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- registry check passed with `AppLauncher(headless=True)`:
+  - Stage2P keeps `yaw_only_command_prob=0.0`.
+  - Stage2Q resolves with `straight_command_prob=0.40`, `yaw_only_command_prob=0.35`.
+  - Stage2Q resolves with `ang_vel_z=(-0.75, 0.75)`.
+- command-mask smoke passed:
+  - `straight_prob=0.4`
+  - `yaw_only_prob=0.35`
+  - `counts straight=22 yaw_only=25 full=17 total=64`
+  - `straight_yaw_max_abs=0.000000`
+  - `yaw_only_y_max_abs=0.000000`
+  - `yaw_only_wz_abs_mean=0.324002`
+  - `full_yaw_abs_mean=0.268361`
