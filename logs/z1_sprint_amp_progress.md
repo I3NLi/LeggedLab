@@ -5701,3 +5701,103 @@ Decision:
 - The online reset mix also worsened: head/shoulder `0.2083`, speed failure `0.2708`.
 - Do not continue from `model_23798.pt` unless the goal is a narrow diagnostic.
 - Next branch should start from the protected low-speed-robust `model_23000.pt` and add sprint AMP gradually, instead of trying to recover low-speed robustness from a high-speed-only policy.
+
+### 2026-06-15 Stage2Y Baseline-Rooted Sprint AMP Bridge Design
+
+Reason:
+
+- Stage2X showed that recovering low-speed robustness from the high-speed Stage2W policy is inefficient and damages high-speed tracking.
+- The next branch should preserve the known robust standing/low-speed behavior of `model_23000.pt`, then gradually inject sprint AMP only where it is useful.
+
+Protected start checkpoint:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-13_22-11-32_z1_flat_cmdslew2_1_2_alive0p02_speeddur2p5_cmdx-2p5_5_resume21600_env20000_20260613_220958/model_23000.pt`
+
+New task:
+
+- `magicbot_z1_flat_sprint_amp_stage2y_baselinebridge`
+
+Stage2Y settings:
+
+- start from `MagicBotZ1FlatSprintAMPEnvCfg`, not Stage2W/Stage2X;
+- command range:
+  - `lin_vel_x=(-1.0, 4.0)`;
+  - `lin_vel_y=(-0.35, 0.35)`;
+  - `ang_vel_z=(-0.65, 0.65)`;
+  - `rel_standing_envs=0.25`;
+  - `straight_command_prob=0.40`;
+  - `yaw_only_command_prob=0.30`;
+- push randomization:
+  - interval `(6.0, 10.0)s`;
+  - linear impulse `x/y=(-1.2, 1.2)`;
+  - yaw impulse `(-0.8, 0.8)`;
+- reference sampling:
+  - command-conditioned sampling enabled;
+  - `command_sample_candidates=64`;
+  - `speed_sample_jitter_frames=256`;
+  - reference speed range starts at `2.75m/s` and caps at `4.6m/s`;
+- AMP:
+  - true adversarial AMP path remains active;
+  - reward coef reduced to `0.05`;
+  - AMP reward/replay gate only starts at `3.0m/s`;
+  - AMP is softly gated for aggressive turn commands: `|y|<=0.25`, `|yaw|<=0.45`;
+  - expert command conditioning stays enabled with 3 command dims;
+- reward:
+  - `track_lin_vel_xy_exp.weight=1.45`, `std=0.95`;
+  - `track_lin_vel_y_exp.weight=0.25`;
+  - `track_ang_vel_z_exp.weight=1.60`;
+  - `forward_speed_progress.weight=0.12`, min x `3.0`;
+  - `yaw_rate_progress.weight=0.22`;
+  - arms/hip default-deviation penalties relaxed to `-0.12`;
+  - head/shoulder termination penalty set to `-220.0`;
+  - torso/flat orientation penalties are slightly relaxed to avoid suppressing useful sprint lean.
+
+First gate:
+
+- smoke test the task from `model_23000.pt`;
+- then train a short gate, preferably `25` iterations, only if resources allow;
+- success condition:
+  - low-speed push recovery must stay much closer to baseline than Stage2W/Stage2X;
+  - `3.0-4.0m/s` fixed-speed tracking should improve without a spike in head/shoulder or speed-tracking resets;
+  - if low-speed push recovery collapses, stop and reject the branch early.
+
+Validation:
+
+- compile passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`;
+  - `legged_lab/envs/__init__.py`.
+- smoke run:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-27-02_z1_stage2y_baselinebridge_from23000_smoke2_20260615_182649`
+- smoke stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2y_baselinebridge_from23000_smoke2_20260615_182649.out`
+- smoke generated:
+  - `model_23000.pt`;
+  - `params/env.yaml`;
+  - `params/agent.yaml`;
+  - `deploy/LocoMode.yaml`;
+  - `deploy/LocoMode_lowKp.yaml`;
+  - TensorBoard event file.
+- smoke YAML confirmed:
+  - `speed_tracking_duration_s=2.5`;
+  - `lin_vel_x=(-1.0, 4.0)`;
+  - `lin_vel_y=(-0.35, 0.35)`;
+  - `ang_vel_z=(-0.65, 0.65)`;
+  - `rel_standing_envs=0.25`;
+  - `straight_command_prob=0.40`;
+  - `yaw_only_command_prob=0.30`;
+  - push `x/y=(-1.2, 1.2)`, `yaw=(-0.8, 0.8)`, interval `(6.0, 10.0)s`;
+  - `command_conditioned_sampling=true`;
+  - `speed_sample_jitter_frames=256`;
+  - `motion_prior.reward_coef=0.05`;
+  - `motion_prior.reward_min_command_speed=3.0`;
+  - `expert_command_conditioning=true`.
+- deploy YAML confirmed:
+  - `command_dim=4`;
+  - `num_obs=82`;
+  - `num_actions=24`.
+
+Training launch plan:
+
+- use `1024` envs for the first short gate because another DogUrdf17 training is already using the GPU;
+- train `25` iterations from the protected `model_23000.pt`;
+- immediately evaluate fixed speeds and low-speed push recovery before continuing.

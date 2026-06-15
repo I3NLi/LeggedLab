@@ -801,6 +801,51 @@ class MagicBotZ1FlatSprintAMPStage2XLowSpeedRobustEnvCfg(MagicBotZ1FlatSprintAMP
 
 
 @configclass
+class MagicBotZ1FlatSprintAMPStage2YBaselineBridgeEnvCfg(MagicBotZ1FlatSprintAMPEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.ranges.lin_vel_x = (-1.0, 4.00)
+        self.commands.ranges.lin_vel_y = (-0.35, 0.35)
+        self.commands.ranges.ang_vel_z = (-0.65, 0.65)
+        self.commands.rel_standing_envs = 0.25
+        self.commands.straight_command_prob = 0.40
+        self.commands.yaw_only_command_prob = 0.30
+        self.domain_rand.events.push_robot.interval_range_s = (6.0, 10.0)
+        self.domain_rand.events.push_robot.params["velocity_range"] = {
+            "x": (-1.2, 1.2),
+            "y": (-1.2, 1.2),
+            "yaw": (-0.8, 0.8),
+        }
+        self.reference_motion.min_command_speed = 2.75
+        self.reference_motion.max_reference_speed = 4.6
+        self.reference_motion.speed_match_tolerance = 1.00
+        self.reference_motion.command_conditioned_sampling = True
+        self.reference_motion.command_sample_candidates = 64
+        self.reference_motion.speed_sample_jitter_frames = 256
+        self.reference_motion.command_lin_vel_x_scale = 0.80
+        self.reference_motion.command_lin_vel_y_scale = 0.25
+        self.reference_motion.command_yaw_scale = 0.35
+        self.reward.track_lin_vel_xy_exp.weight = 1.45
+        self.reward.track_lin_vel_xy_exp.params["std"] = 0.95
+        self.reward.track_lin_vel_y_exp.weight = 0.25
+        self.reward.track_lin_vel_y_exp.params["std"] = 0.45
+        self.reward.lateral_speed_progress.weight = 0.06
+        self.reward.lateral_speed_progress.params["min_command_abs"] = 0.16
+        self.reward.track_ang_vel_z_exp.weight = 1.60
+        self.reward.track_ang_vel_z_exp.params["std"] = 0.55
+        self.reward.yaw_rate_progress.weight = 0.22
+        self.reward.yaw_rate_progress.params["min_command_abs"] = 0.25
+        self.reward.forward_speed_progress.weight = 0.12
+        self.reward.forward_speed_progress.params["min_command_x"] = 3.00
+        self.reward.head_shoulder_contact_termination_penalty.weight = -220.0
+        self.reward.ang_vel_xy_l2.weight = -0.06
+        self.reward.body_orientation_l2.weight = -1.8
+        self.reward.flat_orientation_l2.weight = -0.9
+        self.reward.joint_deviation_hip.weight = -0.12
+        self.reward.joint_deviation_arms.weight = -0.12
+
+
+@configclass
 class MagicBotZ1FlatAgentCfg(G1FlatAgentCfg):
     experiment_name: str = "magicbot_z1_flat"
     wandb_project: str = "magicbot_z1_flat"
@@ -1211,6 +1256,28 @@ class MagicBotZ1FlatSprintAMPStage2XLowSpeedRobustAgentCfg(MagicBotZ1FlatSprintA
         self.motion_prior.reward_command_y_gate_width = 0.05
         self.motion_prior.reward_max_command_yaw_abs = 0.90
         self.motion_prior.reward_command_yaw_gate_width = 0.10
+        self.motion_prior.expert_command_conditioning = True
+        self.motion_prior.expert_command_dim = 3
+        self.save_interval = 25
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage2YBaselineBridgeAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = (
+        "z1_sprint_amp_stage2y_baselinebridge_from23000_"
+        "cmdx-1p0_4p0_cmdy0p35_yaw0p65_push1p2_6to10s_"
+        "ampgate3p0_lr2e-5"
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.learning_rate = 2.0e-5
+        self.motion_prior.reward_coef = 0.05
+        self.motion_prior.reward_min_command_speed = 3.00
+        self.motion_prior.reward_max_command_y_abs = 0.25
+        self.motion_prior.reward_command_y_gate_width = 0.15
+        self.motion_prior.reward_max_command_yaw_abs = 0.45
+        self.motion_prior.reward_command_yaw_gate_width = 0.20
         self.motion_prior.expert_command_conditioning = True
         self.motion_prior.expert_command_dim = 3
         self.save_interval = 25
