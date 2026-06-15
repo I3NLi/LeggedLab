@@ -6410,3 +6410,12 @@ Note:
 
 - The `1` iteration / `32` env smoke is only a config and resume check.
 - Its AMP gate value should not be treated as a training conclusion; the first real `1024` env gate should be checked for AMP gate/replay activity.
+
+Planned first training gate:
+
+- run name:
+  `z1_sprint_amp_stage2ab_hightransition_from23448_cmdx2p75_4p05_env1024_20260615_192947`
+- command:
+  continue from Stage2AA-cont `model_23448.pt` with `--reset_optimizer`, `1024` envs, `25` iterations.
+- purpose:
+  test whether the narrower `2.75-4.05m/s` transition task can improve fixed-command `4.0m/s` without losing `3.5m/s` and low-speed push recovery.
