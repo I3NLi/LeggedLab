@@ -6192,3 +6192,38 @@ Decision:
 - It preserves most low-speed push recovery and improves usable `3.5m/s` behavior compared with the older Stage1C record.
 - It is not ready to declare Stage 2 complete: straight `4.0m/s` still has high speed-tracking resets, and high-speed turn tests show noticeable head/shoulder resets.
 - Next action should be another short cautious continuation from `model_23424.pt`, or a small Stage2AB variant focused on reducing head/shoulder resets while not suppressing stride.
+
+### 2026-06-15 Stage2AA Continuation Plan
+
+Reason:
+
+- Stage2AA `model_23424.pt` is a useful checkpoint, but the first gate is not enough for stable `4.0m/s` straight tracking.
+- Online metrics were still improving at the end of the first gate, with no online speed-failure resets.
+- Continue the same Stage2AA task for one short gate before changing rewards, so the effect of more optimization can be separated from config changes.
+
+Planned run:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2aa_stage1c_extend`
+- run name:
+  `z1_sprint_amp_stage2aa_continue_from23424_cmdx-1p0_4p1_env1024_20260615_191414`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-02-09_z1_sprint_amp_stage2aa_stage1c_extend_from23400_cmdx-1p0_4p1_push1p0_env1024_20260615_190153/model_23424.pt`
+
+Settings:
+
+- continue with `1024` envs for `25` iterations;
+- keep Stage2AA command range `x=(-1.0,4.10)`, `y=(-0.25,0.25)`, `yaw=(-0.55,0.55)`;
+- keep `speed_tracking_duration_s=2.5`;
+- keep AMP reward/replay gate at `2.75m/s`;
+- do not use `--reset_optimizer`, so the Stage2AA optimizer state continues from the first gate.
+
+Continuation gate:
+
+- straight fixed-speed eval at `2.5/3.0/3.5/4.0`;
+- moderate-turn eval at `vy=0.20,wz=0.35`;
+- low-speed push recovery eval at `vx=0.0/0.5/1.0`.
+
+Stop/accept criteria:
+
+- accept only if `3.5-4.0m/s` improves without reducing low-speed push recovery below the Stage2AA first gate;
+- reject or stop if head/shoulder resets rise sharply, `3.0m/s` tracking degrades, or low-speed push recovery collapses.
