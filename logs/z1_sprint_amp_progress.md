@@ -6030,3 +6030,89 @@ Decision:
 - It already has usable `2.5-3.5m/s` start/tracking and retains acceptable low-speed push recovery.
 - Keep protected `model_23000.pt` as the strongest low-speed baseline, but do not force all sprint stages to restart from it.
 - Next branch should resume from Stage1C `model_23400.pt`, add low-speed push recovery as a regression gate, and extend speed/yaw cautiously.
+
+### 2026-06-15 Stage2AA Stage1C-Rooted Extension Design
+
+Reason:
+
+- Stage1C `model_23400.pt` is the best currently verified start point for `2.5-3.5m/s`.
+- It retains acceptable low-speed push recovery, so the next branch should extend from it rather than forcing the sprint policy to relearn high-speed start from `model_23000.pt`.
+
+New task:
+
+- `magicbot_z1_flat_sprint_amp_stage2aa_stage1c_extend`
+
+Start checkpoint:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/model_23400.pt`
+
+Stage2AA settings:
+
+- inherit from Stage1C rather than Stage2W/Y/Z;
+- use `--reset_optimizer`;
+- optimizer:
+  - fixed learning rate `5e-5`;
+- command range:
+  - `lin_vel_x=(-1.0, 4.10)`;
+  - `lin_vel_y=(-0.25, 0.25)`;
+  - `ang_vel_z=(-0.55, 0.55)`;
+  - `rel_standing_envs=0.20`;
+  - `straight_command_prob=0.45`;
+  - `yaw_only_command_prob=0.25`;
+  - keep command slew from upstream: `(2.0, 1.0, 2.0)`;
+- push randomization:
+  - interval `(8.0, 12.0)s`;
+  - linear impulse `x/y=(-1.0, 1.0)`;
+  - yaw impulse `(-0.6, 0.6)`;
+- reference sampling:
+  - command-conditioned sampling enabled;
+  - `command_sample_candidates=64`;
+  - `speed_sample_jitter_frames=256`;
+  - reference speed range starts at `2.5m/s` and caps at `4.8m/s`;
+- AMP:
+  - reward coef `0.06`;
+  - AMP gate starts at `2.75m/s`;
+  - soft command gates: `|y|<=0.22`, `|yaw|<=0.45`;
+- reward:
+  - `track_lin_vel_xy_exp.weight=1.60`, `std=0.90`;
+  - `track_lin_vel_y_exp.weight=0.22`;
+  - `track_ang_vel_z_exp.weight=1.55`;
+  - `forward_speed_progress.weight=0.18`, min x `2.75`;
+  - `yaw_rate_progress.weight=0.18`;
+  - slightly relaxed torso/flat orientation penalties, moderate head/shoulder penalty;
+  - energy/action rate penalties mild enough not to suppress sprint stride.
+
+Validation:
+
+- compile passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`;
+  - `legged_lab/envs/__init__.py`.
+- smoke run:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-57-37_z1_stage2aa_stage1c_extend_from23400_smoke_20260615_185724`
+- smoke generated:
+  - `model_23400.pt`;
+  - `params/env.yaml`;
+  - `params/agent.yaml`;
+  - deploy YAML files;
+  - TensorBoard event file.
+- smoke YAML/event confirmed:
+  - `speed_tracking_duration_s=2.5`;
+  - `lin_vel_x=(-1.0, 4.10)`;
+  - `lin_vel_y=(-0.25, 0.25)`;
+  - `ang_vel_z=(-0.55, 0.55)`;
+  - `rel_standing_envs=0.20`;
+  - `straight_command_prob=0.45`;
+  - `yaw_only_command_prob=0.25`;
+  - `command_slew_rate_x=2.0`;
+  - `learning_rate=5e-5`;
+  - `schedule=fixed`;
+  - `reward_min_command_speed=2.75`;
+  - `expert_command_conditioning=true`.
+
+First gate:
+
+- train `25` iterations with `1024` envs from Stage1C `model_23400.pt`;
+- fixed-speed eval at `2.5/3.0/3.5/4.0`;
+- strong-turn eval at `vy=0.20,wz=0.35`;
+- low-speed push recovery eval at `vx=0.0/0.5/1.0`;
+- continue only if it preserves Stage1C low/mid-speed and improves `3.5-4.0m/s` without collapsing push recovery.
