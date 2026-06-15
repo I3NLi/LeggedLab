@@ -5164,3 +5164,91 @@ Training plan:
   - strong turn: `vy=0.30`, `wz=0.60`, `vx=3.0, 3.5, 4.0`.
 - Success condition:
   sustained yaw improves over Stage2S without sacrificing too much `3.5-4.0 m/s` forward stability.
+
+Stage2U first gate result:
+
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_14-16-46_z1_sprint_amp_stage2u_yawspecialist_fromstage2s23750_cmdx2p25_4p0_cmdy0p30_yaw0p95_straight0p20_yawonly0p55_yawprog0p95_ampgate_y0p12_yaw0p20_env1024_20260615_141614`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2u_yawspecialist_fromstage2s23750_cmdx2p25_4p0_cmdy0p30_yaw0p95_straight0p20_yawonly0p55_yawprog0p95_ampgate_y0p12_yaw0p20_env1024_20260615_141614.out`
+- checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_14-16-46_z1_sprint_amp_stage2u_yawspecialist_fromstage2s23750_cmdx2p25_4p0_cmdy0p30_yaw0p95_straight0p20_yawonly0p55_yawprog0p95_ampgate_y0p12_yaw0p20_env1024_20260615_141614/model_23774.pt`
+- note:
+  the runner saved `model_23774.pt` as the final 25-iteration gate.
+
+Online final indicators from TensorBoard at step `23774`:
+
+| metric | value |
+| --- | ---: |
+| mean reward | 14.7611 |
+| mean episode length | 521.1600 |
+| track xy | 0.8072 |
+| track y | 0.1329 |
+| forward progress | 0.0699 |
+| lateral progress | 0.0028 |
+| track yaw | 0.3782 |
+| yaw progress | 0.2037 |
+| timeout ratio | 0.9063 |
+| head/shoulder ratio | 0.0938 |
+| speed failure ratio | 0.0000 |
+| AMP step gate | 0.3077 |
+| AMP replay gate | 0.4643 |
+| AMP reward | 0.0047 |
+
+Eval artifacts:
+
+- straight:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_14-16-46_z1_sprint_amp_stage2u_yawspecialist_fromstage2s23750_cmdx2p25_4p0_cmdy0p30_yaw0p95_straight0p20_yawonly0p55_yawprog0p95_ampgate_y0p12_yaw0p20_env1024_20260615_141614/eval_fixed_speed_23774_env64_3p0_4p0.txt`
+- standard turn:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_14-16-46_z1_sprint_amp_stage2u_yawspecialist_fromstage2s23750_cmdx2p25_4p0_cmdy0p30_yaw0p95_straight0p20_yawonly0p55_yawprog0p95_ampgate_y0p12_yaw0p20_env1024_20260615_141614/eval_fixed_command_23774_vy0p20_wz0p35_env32.txt`
+- strong turn:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_14-16-46_z1_sprint_amp_stage2u_yawspecialist_fromstage2s23750_cmdx2p25_4p0_cmdy0p30_yaw0p95_straight0p20_yawonly0p55_yawprog0p95_ampgate_y0p12_yaw0p20_env1024_20260615_141614/eval_fixed_command_23774_vy0p30_wz0p60_env32.txt`
+- Stage2S same strong-turn control:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_14-16-46_z1_sprint_amp_stage2u_yawspecialist_fromstage2s23750_cmdx2p25_4p0_cmdy0p30_yaw0p95_straight0p20_yawonly0p55_yawprog0p95_ampgate_y0p12_yaw0p20_env1024_20260615_141614/eval_stage2s_fixed_command_23750_vy0p30_wz0p60_env32.txt`
+
+Straight eval (`vy=0.0`, `wz=0.0`, `num_envs=64`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2S 23750 | 3.50 | 3.5108 | 0.1764 | 0.2296 | 0.3468 | 3 | 3 | 0 |
+| Stage2U 23774 | 3.00 | 2.9446 | 0.1224 | 0.1688 | 0.2910 | 2 | 2 | 0 |
+| Stage2U 23774 | 3.50 | 3.2130 | 0.3018 | 0.3422 | 0.5366 | 5 | 5 | 0 |
+| Stage2S 23750 | 4.00 | 3.6661 | 0.3709 | 0.4149 | 0.8721 | 2 | 2 | 0 |
+| Stage2U 23774 | 4.00 | 3.3745 | 0.6271 | 0.6586 | 1.3031 | 4 | 4 | 0 |
+
+Standard turn eval (`vy=0.20`, `wz=0.35`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2S 23750 | 3.50 | 3.5094 | 0.1889 | 0.1984 | 0.1484 | 0.1062 | 0.3804 | 0.2021 | 0.3370 | 1 | 1 | 0 |
+| Stage2U 23774 | 3.00 | 2.9568 | 0.1687 | 0.2380 | 0.1065 | 0.1029 | 0.3163 | 0.1609 | 0.2831 | 1 | 1 | 0 |
+| Stage2U 23774 | 3.50 | 3.2577 | 0.1778 | 0.2005 | 0.2459 | 0.1150 | 0.3567 | 0.2844 | 0.4714 | 1 | 1 | 0 |
+| Stage2S 23750 | 4.00 | 3.5825 | 0.1986 | 0.1838 | 0.4387 | 0.1353 | 0.4483 | 0.4835 | 1.0086 | 2 | 2 | 0 |
+| Stage2U 23774 | 4.00 | 3.4192 | 0.1686 | 0.1797 | 0.5808 | 0.1277 | 0.3830 | 0.6047 | 1.0695 | 0 | 0 | 0 |
+
+Strong turn eval (`vy=0.30`, `wz=0.60`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2S 23750 | 3.00 | 3.2007 | 0.2532 | 0.3796 | 0.3716 | 0.1402 | 0.4308 | 0.4163 | 0.5460 | 5 | 5 | 0 |
+| Stage2U 23774 | 3.00 | 2.9785 | 0.2481 | 0.4246 | 0.1139 | 0.1080 | 0.3511 | 0.1732 | 0.2819 | 3 | 3 | 0 |
+| Stage2S 23750 | 3.50 | 3.4737 | 0.2989 | 0.3427 | 0.1961 | 0.1144 | 0.4555 | 0.2511 | 0.3511 | 3 | 3 | 0 |
+| Stage2U 23774 | 3.50 | 3.2170 | 0.2779 | 0.3682 | 0.2910 | 0.1141 | 0.4323 | 0.3290 | 0.4661 | 1 | 1 | 0 |
+| Stage2S 23750 | 4.00 | 3.6188 | 0.3018 | 0.3039 | 0.4007 | 0.1294 | 0.5130 | 0.4442 | 0.8907 | 4 | 4 | 0 |
+| Stage2U 23774 | 4.00 | 3.4077 | 0.3089 | 0.3251 | 0.5924 | 0.1254 | 0.4820 | 0.6154 | 1.0357 | 2 | 2 | 0 |
+
+Stage2U checkpoint choice:
+
+- `model_23774.pt` is a useful yaw-specialization probe, but not a mainline/deployment checkpoint.
+- Positive:
+  - online yaw progress improved clearly (`0.2037` vs Stage2T `0.1141`);
+  - strong-turn `vx=3.0` improved substantially over Stage2S: mean `wz` `0.3796 -> 0.4246`, `xy_abs_err` `0.4163 -> 0.1732`, resets `5 -> 3`;
+  - strong-turn `vx=3.5` and `4.0` improve yaw slightly and reduce resets.
+- Negative:
+  - straight `3.5-4.0` tracking regresses versus Stage2S;
+  - standard-turn `3.5-4.0` does not improve yaw materially;
+  - high-speed forward tracking is weaker after lowering the whole command x range.
+- Recommendation:
+  - do not continue Stage2U directly as the sprint mainline;
+  - keep it as evidence that lower-speed yaw practice can teach sustained yaw;
+  - next branch should either restore high-speed x pressure while retaining a smaller yaw practice slice, or implement command-conditioned AMP/reference sampling so yaw commands can use the turning segments in `sprint1_subject2` without fighting straight-sprint behavior.
