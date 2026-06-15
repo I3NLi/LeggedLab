@@ -599,6 +599,28 @@ class MagicBotZ1FlatSprintAMPStage2OBalancedAgilityEnvCfg(MagicBotZ1FlatSprintAM
 
 
 @configclass
+class MagicBotZ1FlatSprintAMPStage2PMixedCommandEnvCfg(MagicBotZ1FlatSprintAMPStage2LStabilityAnchorEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.ranges.lin_vel_x = (3.35, 4.55)
+        self.commands.ranges.lin_vel_y = (-0.35, 0.35)
+        self.commands.ranges.ang_vel_z = (-0.65, 0.65)
+        self.commands.straight_command_prob = 0.45
+        self.reference_motion.min_command_speed = 3.35
+        self.reference_motion.max_reference_speed = 5.2
+        self.reference_motion.speed_match_tolerance = 0.85
+        self.reward.track_lin_vel_xy_exp.weight = 1.95
+        self.reward.track_lin_vel_xy_exp.params["std"] = 0.95
+        self.reward.track_lin_vel_y_exp.weight = 0.45
+        self.reward.track_lin_vel_y_exp.params["std"] = 0.35
+        self.reward.track_ang_vel_z_exp.weight = 1.75
+        self.reward.track_ang_vel_z_exp.params["std"] = 0.50
+        self.reward.forward_speed_progress.weight = 0.24
+        self.reward.forward_speed_progress.params["min_command_x"] = 3.35
+        self.reward.head_shoulder_contact_termination_penalty.weight = -260.0
+
+
+@configclass
 class MagicBotZ1FlatAgentCfg(G1FlatAgentCfg):
     experiment_name: str = "magicbot_z1_flat"
     wandb_project: str = "magicbot_z1_flat"
@@ -843,6 +865,21 @@ class MagicBotZ1FlatSprintAMPStage2OBalancedAgilityAgentCfg(MagicBotZ1FlatSprint
         self.algorithm.learning_rate = 1.5e-5
         self.motion_prior.reward_coef = 0.08
         self.motion_prior.reward_min_command_speed = 3.4
+        self.save_interval = 25
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage2PMixedCommandAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = (
+        "z1_sprint_amp_stage2p_mixedcommand_cmdx3p35_4p55_"
+        "cmdy0p35_yaw0p65_straight0p45_tracky0p45_trackyaw1p75_lr1p5e-5"
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.learning_rate = 1.5e-5
+        self.motion_prior.reward_coef = 0.08
+        self.motion_prior.reward_min_command_speed = 3.35
         self.save_interval = 25
 
 

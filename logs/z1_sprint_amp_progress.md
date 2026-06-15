@@ -4244,3 +4244,69 @@ Stage2O checkpoint choice:
   - keep Stage2N as proof that y/yaw can be improved, but do not continue N directly.
   - do not continue Stage2O.
   - next change should address command sampling: keep straight-line samples in the same run while adding a smaller fraction of lateral/yaw commands, instead of uniformly widening y/yaw for every command.
+
+## Stage2P: mixed command sampling with straight retention
+
+Purpose:
+
+- Fix the Stage2N/Stage2O tradeoff by changing command sampling, not only reward weights.
+- Keep a fraction of high-speed moving samples as pure straight-line commands while still training on larger y/yaw commands.
+- Preserve straight high-speed competence and improve y/yaw command following in one run.
+
+Base command sampler change:
+
+- Added `CommandsCfg.straight_command_prob`, default `0.0`.
+- In `BaseEnv._compute_command_generator`, training mode now expands `UniformVelocityCommand.compute()` so the environment can see resampled env ids.
+- When `command_metrics_enabled=True`, resampled envs draw a persistent straight-retention mask:
+  - masked envs keep x velocity but set `lin_vel_y=0.0` and `ang_vel_z=0.0`;
+  - unmasked envs keep the full sampled y/yaw command.
+- `play.py` and fixed eval scripts set `env.command_metrics_enabled=False`, so manual/fixed commands are not changed by the straight-retention mask.
+- Default probability is zero, so existing tasks are unchanged.
+
+Config changes:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2p_mixedcommand`
+- base: `MagicBotZ1FlatSprintAMPStage2LStabilityAnchorEnvCfg`
+- command range:
+  - `lin_vel_x=(3.35, 4.55)`
+  - `lin_vel_y=(-0.35, 0.35)`
+  - `ang_vel_z=(-0.65, 0.65)`
+  - `straight_command_prob=0.45`
+- reference motion:
+  - `min_command_speed=3.35`
+  - `max_reference_speed=5.2`
+  - `speed_match_tolerance=0.85`
+- reward tuning:
+  - `track_lin_vel_xy_exp.weight=1.95`
+  - `track_lin_vel_xy_exp.std=0.95`
+  - `track_lin_vel_y_exp.weight=0.45`
+  - `track_lin_vel_y_exp.std=0.35`
+  - `track_ang_vel_z_exp.weight=1.75`
+  - `track_ang_vel_z_exp.std=0.50`
+  - `forward_speed_progress.weight=0.24`
+  - `forward_speed_progress.min_command_x=3.35`
+  - `head_shoulder_contact_termination_penalty.weight=-260.0`
+- retained safety:
+  - `speed_tracking_duration_s=2.5`
+- agent:
+  - `learning_rate=1.5e-5`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.35`
+  - `save_interval=25`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/envs/base/base_config.py`
+  - `legged_lab/envs/base/base_env.py`
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- registry check passed with `AppLauncher(headless=True)`:
+  - Stage2L keeps `straight_command_prob=0.0`.
+  - Stage2P resolves with `straight_command_prob=0.45`.
+  - Stage2P resolves with wider `lin_vel_y=(-0.35, 0.35)`, `ang_vel_z=(-0.65, 0.65)`.
+- command-mask smoke passed:
+  - `straight_prob=0.45`
+  - `straight_count=12 total=32`
+  - `masked_yaw_max_abs=0.000000`
+  - `turn_abs_mean=0.246254`
