@@ -37,6 +37,11 @@ parser.add_argument(
     action="store_true",
     help="Skip generating MagicBot Z1 deploy YAML files during training startup.",
 )
+parser.add_argument(
+    "--reset_optimizer",
+    action="store_true",
+    help="When resuming, load policy weights but start with the current task optimizer and learning-rate config.",
+)
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
@@ -113,8 +118,9 @@ def train():
         # get path to previous checkpoint
         resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
         print(f"[INFO]: Loading model checkpoint from: {resume_path}")
+        print(f"[INFO]: Load optimizer state: {not args_cli.reset_optimizer}")
         # load previously trained model
-        runner.load(resume_path)
+        runner.load(resume_path, load_optimizer=not args_cli.reset_optimizer)
 
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)

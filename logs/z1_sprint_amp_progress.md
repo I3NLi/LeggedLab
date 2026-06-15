@@ -5801,3 +5801,138 @@ Training launch plan:
 - use `1024` envs for the first short gate because another DogUrdf17 training is already using the GPU;
 - train `25` iterations from the protected `model_23000.pt`;
 - immediately evaluate fixed speeds and low-speed push recovery before continuing.
+
+Stage2Y training result:
+
+- run:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-29-31_z1_sprint_amp_stage2y_baselinebridge_from23000_cmdx-1p0_4p0_cmdy0p35_yaw0p65_push1p2_env1024_20260615_182915`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2y_baselinebridge_from23000_cmdx-1p0_4p0_cmdy0p35_yaw0p65_push1p2_env1024_20260615_182915.out`
+- final checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-29-31_z1_sprint_amp_stage2y_baselinebridge_from23000_cmdx-1p0_4p0_cmdy0p35_yaw0p65_push1p2_env1024_20260615_182915/model_23024.pt`
+
+Final online indicators from TensorBoard at step `23024`:
+
+| metric | value |
+| --- | ---: |
+| mean reward | 14.0466 |
+| mean episode length | 538.7800 |
+| timeout ratio | 0.9236 |
+| head/shoulder ratio | 0.0764 |
+| speed failure ratio | 0.0000 |
+| track xy | 0.7422 |
+| track y | 0.1265 |
+| track yaw | 0.4732 |
+| AMP step gate | 0.0914 |
+| AMP replay gate | 0.0914 |
+| AMP reward | 0.0002 |
+
+Straight fixed-speed eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-29-31_z1_sprint_amp_stage2y_baselinebridge_from23000_cmdx-1p0_4p0_cmdy0p35_yaw0p65_push1p2_env1024_20260615_182915/eval_fixed_speed_23024_env64_3p0_4p0.txt`
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2Y 23024 | 3.00 | 0.2868 | 2.7134 | 2.7196 | 3.1637 | 61 | 3 | 58 |
+| Stage2Y 23024 | 3.50 | 0.0053 | 3.4947 | 3.4997 | 3.7317 | 66 | 3 | 63 |
+| Stage2Y 23024 | 4.00 | 0.0300 | 3.9700 | 3.9743 | 4.1653 | 70 | 7 | 63 |
+
+Low-speed push recovery eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-29-31_z1_sprint_amp_stage2y_baselinebridge_from23000_cmdx-1p0_4p0_cmdy0p35_yaw0p65_push1p2_env1024_20260615_182915/eval_push_recovery_23024_low_vx0_1_push1_env16.txt`
+
+| checkpoint | target vx | recovery ratio | xy abs err | p90 xy err | p10 height | resets | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2Y 23024 | 0.0 | 0.9792 | 0.2970 | 0.8441 | 0.6827 | 0 | 0 |
+| Stage2Y 23024 | 0.5 | 0.8333 | 0.3597 | 0.8576 | 0.6882 | 0 | 0 |
+| Stage2Y 23024 | 1.0 | 0.8333 | 0.3517 | 0.9249 | 0.6824 | 0 | 0 |
+
+Decision:
+
+- Stage2Y is useful as a diagnostic because it preserves most low-speed push robustness.
+- Reject Stage2Y as a sprint mainline because fixed high-speed commands do not start; failures are dominated by speed tracking resets.
+- The online reward/length were misleading because the command distribution and standing/low-speed behavior dominated the aggregate.
+
+Training-entry fix:
+
+- Added `--reset_optimizer` to `legged_lab/scripts/train.py`.
+- Reason:
+  `runner.load()` previously restored the checkpoint optimizer by default; `model_23000.pt` carries optimizer LR state (`2.56e-4`) that can override the new stage's intended LR and scheduler behavior.
+- New behavior:
+  pass `--reset_optimizer` to load policy weights but keep the current task optimizer and learning-rate config.
+
+### 2026-06-15 Stage2Z High-Start Bridge Design
+
+Reason:
+
+- Stage2Y preserved low-speed robustness but did not train high-speed start.
+- The next branch should train the missing behavior directly: instant `2.0-3.5m/s` commands from the stable baseline.
+
+New task:
+
+- `magicbot_z1_flat_sprint_amp_stage2z_highstart`
+
+Stage2Z settings:
+
+- start from protected `model_23000.pt`;
+- use `--reset_optimizer`;
+- optimizer:
+  - fixed learning rate `3e-5`;
+  - adaptive schedule is disabled for this short high-start gate so the LR is not immediately collapsed by the first high-KL update;
+- command range:
+  - `lin_vel_x=(2.0, 3.5)`;
+  - `lin_vel_y=(-0.25, 0.25)`;
+  - `ang_vel_z=(-0.45, 0.45)`;
+  - `rel_standing_envs=0.05`;
+  - `straight_command_prob=0.55`;
+  - `yaw_only_command_prob=0.25`;
+  - `command_slew_rate=(0.0, 0.0, 0.0)` so the policy sees instant high-speed commands;
+- push randomization:
+  - interval `(8.0, 12.0)s`;
+  - linear impulse `x/y=(-1.0, 1.0)`;
+  - yaw impulse `(-0.6, 0.6)`;
+- reference sampling:
+  - command-conditioned sampling enabled;
+  - `speed_sample_jitter_frames=256`;
+  - reference speed range starts at `2.5m/s` and caps at `4.2m/s`;
+- AMP:
+  - reward coef `0.04`;
+  - AMP gate starts at `2.75m/s`;
+  - soft command gates: `|y|<=0.20`, `|yaw|<=0.35`;
+- reward:
+  - `track_lin_vel_xy_exp.weight=1.80`, `std=0.80`;
+  - `forward_speed_progress.weight=0.25`, min x `2.50`;
+  - moderate yaw/y tracking and slightly stronger head/shoulder penalty.
+
+First gate:
+
+- smoke with `--reset_optimizer`;
+- train `25` iterations from `model_23000.pt`;
+- primary success condition:
+  `2.5/3.0/3.5m/s` fixed-speed eval must actually move and avoid speed-tracking reset collapse.
+- secondary condition:
+  low-speed push recovery should not fall far below Stage2Y/baseline after the short high-start gate.
+
+Validation:
+
+- compile passed for:
+  - `legged_lab/scripts/train.py`;
+  - `legged_lab/envs/magicbot_z1/z1_config.py`;
+  - `legged_lab/envs/__init__.py`.
+- fixed-LR smoke run:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-42-05_z1_stage2z_highstart_from23000_fixedlr_smoke_20260615_184151`
+- smoke generated:
+  - `model_23000.pt`;
+  - `params/env.yaml`;
+  - `params/agent.yaml`;
+  - deploy YAML files;
+  - TensorBoard event file.
+- smoke YAML/event confirmed:
+  - `command_slew_rate_x/y/yaw=0.0`;
+  - `lin_vel_x=(2.0, 3.5)`;
+  - `learning_rate=3e-5`;
+  - `schedule=fixed`;
+  - `reward_min_command_speed=2.75`;
+  - `AMP/mean_step_gate=0.4925`.
