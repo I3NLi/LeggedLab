@@ -5027,6 +5027,17 @@ Training:
 - produced checkpoint:
   `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-50-21_z1_sprint_amp_stage2t_agilityauthority_fromstage2s23750_cmdx3p35_4p55_cmdy0p35_yaw1p00_straight0p25_yawonly0p50_yprog0p28_yawprog0p70_ampgate_y0p18_yaw0p35_env1024_20260615_135006/model_23775.pt`
 
+Eval artifacts used:
+
+- straight retry:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-50-21_z1_sprint_amp_stage2t_agilityauthority_fromstage2s23750_cmdx3p35_4p55_cmdy0p35_yaw1p00_straight0p25_yawonly0p50_yprog0p28_yawprog0p70_ampgate_y0p18_yaw0p35_env1024_20260615_135006/eval_fixed_speed_23775_env64_3p5_4p5_retry1.txt`
+- standard-turn retry:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-50-21_z1_sprint_amp_stage2t_agilityauthority_fromstage2s23750_cmdx3p35_4p55_cmdy0p35_yaw1p00_straight0p25_yawonly0p50_yprog0p28_yawprog0p70_ampgate_y0p18_yaw0p35_env1024_20260615_135006/eval_fixed_command_23775_vy0p20_wz0p35_env32_retry1.txt`
+- strong-turn retry:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-50-21_z1_sprint_amp_stage2t_agilityauthority_fromstage2s23750_cmdx3p35_4p55_cmdy0p35_yaw1p00_straight0p25_yawonly0p50_yprog0p28_yawprog0p70_ampgate_y0p18_yaw0p35_env1024_20260615_135006/eval_fixed_command_23775_vy0p35_wz0p60_env32_retry2.txt`
+- note:
+  earlier non-retry and `strong-turn retry1` files are not used because concurrent leftover evals/Isaac initialization produced invalid or incomplete files.
+
 Online final indicators:
 
 | iteration | mean reward | mean episode length | track xy | track y | forward progress | lateral progress | track yaw | yaw progress | timeout ratio | head/shoulder ratio | speed failure ratio |
@@ -5065,6 +5076,8 @@ Strong turning eval (`vy=0.35`, `wz=0.60`, `num_envs=32`, `duration=4`, `warmup=
 | Stage2T 23775 | 3.50 | 3.4640 | 0.3530 | 0.3418 | 0.2216 | 0.1086 | 0.4576 | 0.2680 | 0.3675 | 5 | 5 | 0 |
 | Stage2S 23750 | 4.00 | 3.6193 | 0.3271 | 0.3034 | 0.4015 | 0.1259 | 0.5095 | 0.4441 | 0.8533 | 2 | 2 | 0 |
 | Stage2T 23775 | 4.00 | 3.7061 | 0.3672 | 0.3023 | 0.3110 | 0.1153 | 0.4768 | 0.3528 | 0.6988 | 0 | 0 | 0 |
+| Stage2S 23750 | 4.25 | 3.6502 | 0.3364 | 0.2968 | 0.6025 | 0.1452 | 0.5314 | 0.6363 | 1.4329 | 2 | 2 | 0 |
+| Stage2T 23775 | 4.25 | 3.5542 | 0.3375 | 0.2969 | 0.6993 | 0.1353 | 0.5406 | 0.7283 | 1.8422 | 5 | 5 | 0 |
 
 Short probes:
 
@@ -5090,6 +5103,7 @@ Stage2T checkpoint choice:
     - more head/shoulder resets at `4.0-4.5`;
     - larger straight speed error than Stage2S at `4.0+`.
 - Recommendation:
+  - keep Stage2S as the best stability-preserving branch so far;
   - keep Stage2T as evidence that y authority can be strengthened;
   - do not continue Stage2T blindly;
   - next branch should target yaw separately, likely by using a yaw-specialization phase rather than pairing large yaw with the full `3.35-4.55 m/s` x-speed range immediately.
