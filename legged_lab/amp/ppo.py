@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from itertools import chain
+from itertools import chain, repeat
 
 import torch
 import torch.nn as nn
@@ -203,6 +203,7 @@ class AMPPPO(PPO):
         mean_amp_grad_penalty = 0.0
         mean_amp_policy_logit = 0.0
         mean_amp_expert_logit = 0.0
+        amp_update_count = 0
         mean_rnd_loss = 0.0 if self.rnd else None
         mean_symmetry_loss = 0.0 if self.symmetry else None
 
@@ -213,14 +214,21 @@ class AMPPPO(PPO):
 
         mini_batch_size = self.storage.num_envs * self.storage.num_transitions_per_env // self.num_mini_batches
         num_updates = self.num_learning_epochs * self.num_mini_batches
-        amp_policy_generator = self.amp_replay_buffer.mini_batch_generator(
-            num_updates,
-            mini_batch_size,
-            return_commands=self.amp_expert_command_conditioning,
-        )
+        has_amp_replay = self.amp_replay_buffer.num_samples > 0
+        if has_amp_replay:
+            amp_policy_generator = self.amp_replay_buffer.mini_batch_generator(
+                num_updates,
+                mini_batch_size,
+                return_commands=self.amp_expert_command_conditioning,
+            )
+        else:
+            amp_policy_generator = repeat(None, num_updates)
 
         for sample, policy_amp_sample in zip(generator, amp_policy_generator):
-            if self.amp_expert_command_conditioning:
+            if policy_amp_sample is None:
+                policy_amp_batch = None
+                policy_command_batch = None
+            elif self.amp_expert_command_conditioning:
                 policy_amp_batch, policy_command_batch = policy_amp_sample
             else:
                 policy_amp_batch = policy_amp_sample
@@ -358,27 +366,30 @@ class AMPPPO(PPO):
             if self.rnd_optimizer:
                 self.rnd_optimizer.step()
 
-            expert_amp_batch = self._sample_expert_amp(mini_batch_size, command_values=policy_command_batch)
-            discriminator_loss, grad_penalty, policy_logits, expert_logits = self._compute_discriminator_loss(
-                policy_amp_batch, expert_amp_batch
-            )
-            discriminator_total_loss = discriminator_loss + grad_penalty
-            self.discriminator_optimizer.zero_grad()
-            discriminator_total_loss.backward()
-            if self.is_multi_gpu:
-                self.reduce_discriminator_parameters()
-            nn.utils.clip_grad_norm_(self.discriminator.parameters(), self.max_grad_norm)
-            self.discriminator_optimizer.step()
-            self.amp_normalizer.update(policy_amp_batch)
-            self.amp_normalizer.update(expert_amp_batch)
+            if policy_amp_batch is not None:
+                expert_amp_batch = self._sample_expert_amp(mini_batch_size, command_values=policy_command_batch)
+                discriminator_loss, grad_penalty, policy_logits, expert_logits = self._compute_discriminator_loss(
+                    policy_amp_batch, expert_amp_batch
+                )
+                discriminator_total_loss = discriminator_loss + grad_penalty
+                self.discriminator_optimizer.zero_grad()
+                discriminator_total_loss.backward()
+                if self.is_multi_gpu:
+                    self.reduce_discriminator_parameters()
+                nn.utils.clip_grad_norm_(self.discriminator.parameters(), self.max_grad_norm)
+                self.discriminator_optimizer.step()
+                self.amp_normalizer.update(policy_amp_batch)
+                self.amp_normalizer.update(expert_amp_batch)
+
+                mean_amp_discriminator_loss += discriminator_loss.item()
+                mean_amp_grad_penalty += grad_penalty.item()
+                mean_amp_policy_logit += policy_logits.mean().item()
+                mean_amp_expert_logit += expert_logits.mean().item()
+                amp_update_count += 1
 
             mean_value_loss += value_loss.item()
             mean_surrogate_loss += surrogate_loss.item()
             mean_entropy += entropy_batch.mean().item()
-            mean_amp_discriminator_loss += discriminator_loss.item()
-            mean_amp_grad_penalty += grad_penalty.item()
-            mean_amp_policy_logit += policy_logits.mean().item()
-            mean_amp_expert_logit += expert_logits.mean().item()
             if mean_rnd_loss is not None:
                 mean_rnd_loss += rnd_loss.item()
             if mean_symmetry_loss is not None:
@@ -387,10 +398,10 @@ class AMPPPO(PPO):
         mean_value_loss /= num_updates
         mean_surrogate_loss /= num_updates
         mean_entropy /= num_updates
-        mean_amp_discriminator_loss /= num_updates
-        mean_amp_grad_penalty /= num_updates
-        mean_amp_policy_logit /= num_updates
-        mean_amp_expert_logit /= num_updates
+        mean_amp_discriminator_loss /= max(amp_update_count, 1)
+        mean_amp_grad_penalty /= max(amp_update_count, 1)
+        mean_amp_policy_logit /= max(amp_update_count, 1)
+        mean_amp_expert_logit /= max(amp_update_count, 1)
         if mean_rnd_loss is not None:
             mean_rnd_loss /= num_updates
         if mean_symmetry_loss is not None:

@@ -86,7 +86,10 @@ class AMPOnPolicyRunner(OnPolicyRunner):
                         command_speeds=command_speeds,
                         command_values=command_values,
                     )
-                    amp_replay_gate = self.alg.amp_reward_gate(command_speeds=None, command_values=command_values)
+                    amp_replay_gate = self.alg.amp_reward_gate(
+                        command_speeds=command_speeds,
+                        command_values=command_values,
+                    )
 
                     self.alg.process_env_step(
                         obs,

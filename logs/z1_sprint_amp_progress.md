@@ -5511,3 +5511,115 @@ Stage2W checkpoint choice:
   - run Isaac play / MuJoCo visual check for `model_23774.pt`;
   - if visual quality is good, continue Stage2W for another short gate or create Stage2X with slightly stronger yaw progress and a small head-reset guard;
   - keep Stage2S `model_23750.pt` as protected deployment fallback until Stage2W is visually accepted.
+
+### 2026-06-15 Low-Speed Push Robustness Check and Stage2X Design
+
+New objective addition:
+
+- Low-speed behavior must be strongly robust: standing and slow walking should recover from pushes/kicks/shoves, not only sprint at high speed.
+
+Tooling:
+
+- Added `legged_lab/scripts/eval_push_recovery.py`.
+- The script:
+  - fixes a low-speed command;
+  - applies deterministic body-frame push profiles;
+  - injects linear and yaw root-velocity impulses;
+  - reports recovery ratio, resets, reset reasons, velocity error and height margin.
+- This gives a comparable low-speed robustness gate for Stage2S, Stage2W and future branches.
+
+Push eval setting:
+
+- commands: `vx=0.0, 0.5, 1.0`, `vy=0.0`, `wz=0.0`;
+- envs: `16`;
+- warmup: `2s`;
+- measured duration: `6s`;
+- push interval: `2s`;
+- recovery window: `1s`;
+- push magnitude: linear `1.0m/s`, yaw `1.0rad/s`;
+- profiles: forward, backward, left, right, yaw left, yaw right.
+
+Stage2W result:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_15-04-36_z1_sprint_amp_stage2w_cmdcond_fromstage2s23750_cmdx3p35_4p55_cmdy0p30_yaw0p90_refcmd64_j256_ampallturn_env1024_20260615_150420/eval_push_recovery_23774_low_vx0_1_push1_env16.txt`
+
+| checkpoint | target vx | recovery ratio | xy abs err | p90 xy err | p10 height | resets | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2W 23774 | 0.0 | 0.0000 | 1.4589 | 2.2030 | 0.6330 | 0 | 0 |
+| Stage2W 23774 | 0.5 | 0.0000 | 1.4616 | 2.0862 | 0.6205 | 0 | 0 |
+| Stage2W 23774 | 1.0 | 0.0000 | 1.2273 | 1.8619 | 0.6165 | 16 | 16 |
+
+Protected baseline result:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-13_22-11-32_z1_flat_cmdslew2_1_2_alive0p02_speeddur2p5_cmdx-2p5_5_resume21600_env20000_20260613_220958/eval_push_recovery_23000_low_vx0_1_push1_env16.txt`
+
+| checkpoint | target vx | recovery ratio | xy abs err | p90 xy err | p10 height | resets | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Baseline 23000 | 0.0 | 1.0000 | 0.2904 | 0.8321 | 0.6827 | 0 | 0 |
+| Baseline 23000 | 0.5 | 0.9375 | 0.3457 | 0.8763 | 0.6888 | 0 | 0 |
+| Baseline 23000 | 1.0 | 0.8958 | 0.3383 | 0.8919 | 0.6841 | 0 | 0 |
+
+Conclusion:
+
+- Stage2W is a useful high-speed sprint/turn candidate but is not acceptable as a low-speed robust policy.
+- The protected baseline is dramatically better at standing/low-speed recovery under the same push gate.
+- The next branch must explicitly preserve low-speed robustness while keeping high-speed AMP active only at sprint speeds.
+
+Code changes:
+
+- Fixed AMP replay gating:
+  - replay insertion now uses the same command-speed gate as AMP reward;
+  - low-speed policy windows no longer enter the AMP discriminator when `reward_min_command_speed=3.35`;
+  - if a rollout has no gated AMP samples, PPO still updates and the discriminator update is skipped for that iteration.
+- Added task: `magicbot_z1_flat_sprint_amp_stage2x_lowspeedrobust`.
+
+Stage2X design:
+
+- start from Stage2W candidate, not from the protected baseline;
+- preserve protected baseline separately as fallback;
+- command range:
+  - `lin_vel_x=(-1.0, 4.55)`;
+  - `lin_vel_y=(-0.45, 0.45)`;
+  - `ang_vel_z=(-0.90, 0.90)`;
+  - `rel_standing_envs=0.25`;
+  - `straight_command_prob=0.25`;
+  - `yaw_only_command_prob=0.35`;
+- push randomization:
+  - interval `(2.0, 4.0)s`;
+  - velocity impulse `x/y=(-1.5, 1.5)`;
+  - yaw impulse `(-1.5, 1.5)`;
+- AMP:
+  - command-conditioned expert sampling remains enabled;
+  - `reward_min_command_speed=3.35`;
+  - AMP gate covers `y=0.30`, `yaw=0.90`;
+  - low-speed samples do not train AMP discriminator after the replay-gate fix;
+- reward:
+  - `track_lin_vel_xy_exp.weight=1.85`, `std=0.90`;
+  - `track_lin_vel_y_exp.weight=0.30`;
+  - `track_ang_vel_z_exp.weight=2.20`;
+  - `yaw_rate_progress.weight=0.45`;
+  - `forward_speed_progress.weight=0.18`, min x `3.35`.
+
+Validation:
+
+- compile passed for `amp/ppo.py`, `amp/runner.py`, Z1 config, task registry and push eval script.
+- Stage2X smoke passed:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-00-21_z1_stage2x_lowspeedrobust_smoke2`
+- smoke generated `model_0.pt`.
+- smoke YAML confirmed:
+  - `lin_vel_x=(-1.0, 4.55)`;
+  - `rel_standing_envs=0.25`;
+  - `push_robot.interval_range_s=(2.0, 4.0)`;
+  - push `x/y/yaw` ranges all `±1.5`;
+  - `expert_command_conditioning: true`;
+  - `reward_min_command_speed: 3.35`.
+
+Training plan:
+
+- start from Stage2W:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_15-04-36_z1_sprint_amp_stage2w_cmdcond_fromstage2s23750_cmdx3p35_4p55_cmdy0p30_yaw0p90_refcmd64_j256_ampallturn_env1024_20260615_150420/model_23774.pt`
+- first gate: 25 iterations.
+- success condition:
+  recover low-speed push ratio toward the protected baseline while keeping Stage2W's `3.5-4.0m/s` straight/turn metrics from collapsing.
