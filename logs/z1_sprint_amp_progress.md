@@ -6227,3 +6227,79 @@ Stop/accept criteria:
 
 - accept only if `3.5-4.0m/s` improves without reducing low-speed push recovery below the Stage2AA first gate;
 - reject or stop if head/shoulder resets rise sharply, `3.0m/s` tracking degrades, or low-speed push recovery collapses.
+
+### 2026-06-15 Stage2AA Continuation Result
+
+Run:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2aa_stage1c_extend`
+- run:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-15-14_z1_sprint_amp_stage2aa_continue_from23424_cmdx-1p0_4p1_env1024_20260615_191414`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2aa_continue_from23424_cmdx-1p0_4p1_env1024_20260615_191414.out`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-02-09_z1_sprint_amp_stage2aa_stage1c_extend_from23400_cmdx-1p0_4p1_push1p0_env1024_20260615_190153/model_23424.pt`
+- final checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-15-14_z1_sprint_amp_stage2aa_continue_from23424_cmdx-1p0_4p1_env1024_20260615_191414/model_23448.pt`
+
+Final online indicators from TensorBoard at step `23448`:
+
+| metric | value |
+| --- | ---: |
+| mean reward | 12.4540 |
+| mean episode length | 533.9300 |
+| timeout ratio | 0.9028 |
+| head/shoulder ratio | 0.0556 |
+| body contact ratio | 0.0417 |
+| speed failure ratio | 0.0000 |
+| track xy | 0.7343 |
+| track y | 0.1016 |
+| track yaw | 0.3424 |
+| forward speed progress | 0.0079 |
+| yaw progress | 0.0045 |
+| AMP step gate | 0.1868 |
+| AMP replay gate | 0.1868 |
+| AMP step reward | 0.0016 |
+| learning rate | 0.00005 |
+
+Straight fixed-speed eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-15-14_z1_sprint_amp_stage2aa_continue_from23424_cmdx-1p0_4p1_env1024_20260615_191414/eval_fixed_speed_23448_env64_2p5_4p0.txt`
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AA-cont 23448 | 2.50 | 2.5084 | 0.1086 | 0.1642 | 0.2525 | 3 | 3 | 0 |
+| Stage2AA-cont 23448 | 3.00 | 2.7092 | 0.3658 | 0.4357 | 1.0249 | 8 | 6 | 2 |
+| Stage2AA-cont 23448 | 3.50 | 3.0948 | 0.4688 | 0.5450 | 1.2504 | 2 | 0 | 2 |
+| Stage2AA-cont 23448 | 4.00 | 2.2134 | 1.8046 | 1.8579 | 4.6872 | 23 | 9 | 14 |
+
+Moderate-turn fixed-command eval:
+
+- command: `vy=0.20`, `wz=0.35`
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-15-14_z1_sprint_amp_stage2aa_continue_from23424_cmdx-1p0_4p1_env1024_20260615_191414/eval_fixed_command_23448_vy0p20_wz0p35_env32.txt`
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AA-cont 23448 | 3.00 | 2.9252 | 0.1108 | 0.5742 | 0.1432 | 0.2292 | 0.3669 | 3 | 3 | 0 |
+| Stage2AA-cont 23448 | 3.50 | 3.1198 | 0.1261 | 0.5099 | 0.4051 | 0.4880 | 0.7859 | 5 | 5 | 0 |
+| Stage2AA-cont 23448 | 4.00 | 3.1244 | 0.1260 | 0.5202 | 0.8852 | 0.9532 | 2.8650 | 11 | 10 | 1 |
+
+Low-speed push recovery eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-15-14_z1_sprint_amp_stage2aa_continue_from23424_cmdx-1p0_4p1_env1024_20260615_191414/eval_push_recovery_23448_low_vx0_1_push1_env16.txt`
+
+| checkpoint | target vx | recovery ratio | xy abs err | p90 xy err | p10 height | resets | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AA-cont 23448 | 0.0 | 0.9792 | 0.3340 | 0.8564 | 0.6758 | 0 | 0 |
+| Stage2AA-cont 23448 | 0.5 | 0.8333 | 0.4373 | 0.8731 | 0.6803 | 0 | 0 |
+| Stage2AA-cont 23448 | 1.0 | 0.9583 | 0.4157 | 0.8639 | 0.6771 | 0 | 0 |
+
+Decision:
+
+- Keep Stage2AA-cont `model_23448.pt` as the current better `3.0-3.5m/s` sprint candidate.
+- It improves `3.5m/s` straight tracking and moderate-turn tracking, and it does not hurt low-speed push recovery.
+- Do not continue the same config blindly toward Stage 2. The `4.0m/s` straight command still has many resets, and `4.0m/s` turning has more head/shoulder resets than `model_23424.pt`.
+- Next branch should focus specifically on stable `3.5-4.0m/s` transition: more controlled command curriculum around `3.25-4.0`, stronger high-speed head/shoulder guard, and no expansion beyond `4.1m/s` until fixed-command `4.0` stops producing speed-tracking reset collapse.
