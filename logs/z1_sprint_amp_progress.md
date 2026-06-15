@@ -5993,3 +5993,40 @@ Decision:
 - Next direction should not be "continue Stage2Z longer" without changing mechanism.
 - Better next mechanism:
   train a short command-profile/ramp phase that explicitly rewards acceleration progress before the speed-failure timer expires, or resume from a high-speed-capable checkpoint and add a low-speed robustness preservation term/gate.
+
+### 2026-06-15 Stage1C Recheck for Next Start Point
+
+Reason:
+
+- Stage2Y/Stage2Z showed that the protected `model_23000.pt` is excellent for low-speed push recovery but is weak at fixed high-speed start.
+- Older Stage1C `model_23400.pt` was previously the best `2.5-3.5m/s` candidate; it should be checked for low-speed push recovery before choosing the next start point.
+
+Checkpoint:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/model_23400.pt`
+
+Known fixed-speed eval from earlier records:
+
+| checkpoint | target vx | mean vx | vx abs err | resets | reset ratio |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Stage1C 23400 | 2.50 | 2.3477 | 0.1791 | 4 | 0.1250 |
+| Stage1C 23400 | 3.00 | 2.1901 | 0.8178 | 15 | 0.4688 |
+| Stage1C 23400 | 3.50 | 2.5617 | 0.9383 | 12 | 0.3750 |
+
+Low-speed push recovery eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-14_16-48-51_z1_sprint_amp_stage1c_from23300_cmdx-2p5_3p75_ref2p0_4p2_amp0p10_lr5e-4_save25_env10000_20260614_164801/eval_push_recovery_23400_low_vx0_1_push1_env16.txt`
+
+| checkpoint | target vx | recovery ratio | xy abs err | p90 xy err | p10 height | resets | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage1C 23400 | 0.0 | 0.9583 | 0.3400 | 0.8870 | 0.6760 | 0 | 0 |
+| Stage1C 23400 | 0.5 | 0.8542 | 0.3704 | 0.8766 | 0.6824 | 0 | 0 |
+| Stage1C 23400 | 1.0 | 0.8333 | 0.3712 | 0.8601 | 0.6792 | 1 | 0 |
+
+Decision:
+
+- Stage1C `model_23400.pt` is a better next start point than protected `model_23000.pt` for sprint progression.
+- It already has usable `2.5-3.5m/s` start/tracking and retains acceptable low-speed push recovery.
+- Keep protected `model_23000.pt` as the strongest low-speed baseline, but do not force all sprint stages to restart from it.
+- Next branch should resume from Stage1C `model_23400.pt`, add low-speed push recovery as a regression gate, and extend speed/yaw cautiously.
