@@ -6497,3 +6497,110 @@ Decision:
 - It substantially improves fixed straight `3.0/3.5m/s` and improves `4.0m/s` mean speed versus Stage2AA-cont (`2.8458` vs `2.2134`), but `4.0m/s` still has many resets.
 - It damages low-speed push recovery, especially `vx=0.5` (`0.6250` vs Stage2AA-cont `0.8333`).
 - Next branch should combine Stage2AB's high-speed transition benefit with explicit low-speed retention: restore more low/standing command mass or start from Stage2AA-cont `model_23448.pt` with a mixed command range rather than continuing the narrow high-speed-only Stage2AB distribution.
+
+### 2026-06-15 Stage2AC Mixed-Retention Design
+
+Reason:
+
+- Stage2AA-cont `model_23448.pt` remains the best current general checkpoint because it keeps low-speed push recovery.
+- Stage2AB `model_23472.pt` improved `3.0/3.5m/s` and raised fixed `4.0m/s` mean speed, but the narrow high-speed command distribution damaged low-speed push recovery.
+- Stage2AC should restart from Stage2AA-cont `model_23448.pt`, not from Stage2AB, and mix low/standing commands back in while keeping a smaller high-speed transition bias.
+
+New task:
+
+- `magicbot_z1_flat_sprint_amp_stage2ac_mixedretention`
+
+Start checkpoint:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-15-14_z1_sprint_amp_stage2aa_continue_from23424_cmdx-1p0_4p1_env1024_20260615_191414/model_23448.pt`
+
+Stage2AC settings:
+
+- inherit from Stage2AA, not Stage2AB;
+- use `--reset_optimizer` with fixed LR `3e-5`;
+- command range:
+  - `lin_vel_x=(-0.50, 4.05)`;
+  - `lin_vel_y=(-0.22, 0.22)`;
+  - `ang_vel_z=(-0.50, 0.50)`;
+  - `rel_standing_envs=0.24`;
+  - `straight_command_prob=0.55`;
+  - `yaw_only_command_prob=0.20`;
+- push randomization:
+  - interval `(7.0, 11.0)s`;
+  - linear impulse `x/y=(-1.0, 1.0)`;
+  - yaw impulse `(-0.6, 0.6)`;
+- reference sampling:
+  - command-conditioned sampling remains enabled;
+  - `min_command_speed=2.50`;
+  - `max_reference_speed=4.65`;
+  - `speed_match_tolerance=0.80`;
+  - command scale: `x=0.78`, `y=0.20`, `yaw=0.28`;
+- AMP:
+  - reward coef `0.055`;
+  - AMP gate starts at `3.0m/s`, so low-speed retention samples do not train the discriminator;
+  - soft gates: `|y|<=0.20`, `|yaw|<=0.40`;
+- reward:
+  - high-speed tracking between Stage2AA and Stage2AB: `track_lin_vel_xy_exp.weight=1.75`, `std=0.85`;
+  - `forward_speed_progress.weight=0.20`, min x `3.05`;
+  - head/shoulder penalty `-280`, between Stage2AA and Stage2AB;
+  - posture guards stronger than Stage2AA but softer than Stage2AB;
+  - energy/action-rate penalties between Stage2AA and Stage2AB.
+
+Validation plan:
+
+- compile `z1_config.py` and task registry;
+- smoke one iteration from `model_23448.pt` with `32` envs and `--reset_optimizer`;
+- confirm YAML/event values:
+  - command range;
+  - `speed_tracking_duration_s=2.5`;
+  - fixed LR `3e-5`;
+  - AMP reward gate `3.0`;
+  - expert command conditioning enabled.
+
+First gate:
+
+- if smoke passes, train `25` iterations with `1024` envs from Stage2AA-cont `model_23448.pt`;
+- fixed-speed eval at `2.5/3.0/3.5/4.0`;
+- moderate-turn eval at `vy=0.20,wz=0.35`;
+- low-speed push recovery eval at `vx=0.0/0.5/1.0`;
+- accept only if `3.5/4.0m/s` is closer to Stage2AB while low-speed push recovery stays close to Stage2AA-cont.
+
+Validation:
+
+- compile passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`;
+  - `legged_lab/envs/__init__.py`.
+- smoke run:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-45-55_z1_stage2ac_mixedretention_from23448_smoke_20260615_194542`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2ac_mixedretention_from23448_smoke_20260615_194542.out`
+- smoke generated:
+  - `model_23448.pt`;
+  - `params/env.yaml`;
+  - `params/agent.yaml`;
+  - deploy YAML files;
+  - TensorBoard event file.
+- smoke YAML/event confirmed:
+  - `speed_tracking_duration_s=2.5`;
+  - `lin_vel_x=(-0.50, 4.05)`;
+  - `lin_vel_y=(-0.22, 0.22)`;
+  - `ang_vel_z=(-0.50, 0.50)`;
+  - `rel_standing_envs=0.24`;
+  - `straight_command_prob=0.55`;
+  - `yaw_only_command_prob=0.20`;
+  - `command_slew_rate_x=2.0`;
+  - `learning_rate=3e-5`;
+  - `schedule=fixed`;
+  - `reward_min_command_speed=3.0`;
+  - `expert_command_conditioning=true`.
+- smoke TensorBoard at step `23448`:
+  - `Train/mean_reward=0.3201`;
+  - `Train/mean_episode_length=23.0`;
+  - `Loss/learning_rate=3e-5`;
+  - `AMP/mean_step_gate=0.0`.
+
+Note:
+
+- The `1` iteration / `32` env smoke is only a config and resume check.
+- Its AMP gate value should not be treated as a training conclusion; the first real `1024` env gate should be checked for AMP gate/replay activity.
+- `Config/reference_motion_max_speed` in TensorBoard reports the loaded motion file's observed max anchor speed (`5.2492`); the configured sampling cap is verified in `params/env.yaml` as `max_reference_speed=4.65`.
