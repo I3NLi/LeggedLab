@@ -4852,3 +4852,138 @@ Validation:
   - `py_compile` passed after the fix for:
     - `legged_lab/amp/runner.py`
     - `legged_lab/amp/ppo.py`
+
+Formal Stage2S retry run:
+
+- unit:
+  `z1_stage2s_gatedprior_20260615_133253.service`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-33-09_z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253.out`
+- deploy yaml snapshot root:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-53-44_z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328/model_23725.pt`
+- produced checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-33-09_z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253/model_23750.pt`
+
+Training command:
+
+```bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2s_gatedprior \
+  --num_envs 1024 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-15_12-53-44_z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328 \
+  --checkpoint model_23725.pt \
+  --max_iterations 26 \
+  --run_name z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253 \
+  --logger tensorboard \
+  --deploy_yaml_root /home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253
+```
+
+Online indicators:
+
+| iteration | mean reward | mean episode length | straight prob | yaw-only prob | track xy | track y | progress | track yaw | yaw progress | timeout ratio | head/shoulder ratio | speed failure ratio |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 23726 | -4.06 | 27.11 | 0.3500 | 0.4500 | 0.0469 | 0.0059 | 0.0000 | 0.0198 | 0.0048 | 0.7361 | 0.2639 | 0.0000 |
+| 23732 | -3.92 | 140.47 | 0.3500 | 0.4500 | 0.2668 | 0.0339 | 0.0190 | 0.1155 | 0.0193 | 0.9167 | 0.0833 | 0.0000 |
+| 23735 | -2.50 | 213.48 | 0.3500 | 0.4500 | 0.3679 | 0.0464 | 0.0323 | 0.1561 | 0.0293 | 0.8958 | 0.1042 | 0.0000 |
+| 23738 | 5.75 | 283.50 | 0.3500 | 0.4500 | 0.5305 | 0.0636 | 0.0500 | 0.2148 | 0.0422 | 0.8542 | 0.1458 | 0.0000 |
+| 23741 | 8.09 | 358.17 | 0.3500 | 0.4500 | 0.6139 | 0.0752 | 0.0625 | 0.2521 | 0.0408 | 0.8958 | 0.1042 | 0.0000 |
+| 23744 | 10.10 | 422.99 | 0.3500 | 0.4500 | 0.6866 | 0.0882 | 0.0744 | 0.2848 | 0.0578 | 0.9062 | 0.0938 | 0.0000 |
+| 23747 | 9.77 | 476.80 | 0.3500 | 0.4500 | 0.6802 | 0.0846 | 0.0737 | 0.2765 | 0.0536 | 0.7361 | 0.2639 | 0.0000 |
+| 23750 | 11.00 | 545.22 | 0.3500 | 0.4500 | 0.9398 | 0.1172 | 0.1070 | 0.3854 | 0.0698 | 0.9479 | 0.0521 | 0.0000 |
+
+AMP gate indicators from TensorBoard:
+
+| iteration | mean step gate | mean step replay gate | mean step AMP reward | mean step AMP logit |
+| ---: | ---: | ---: | ---: | ---: |
+| 23743 | 0.523752 | 0.577716 | 0.007118 | -0.835377 |
+| 23744 | 0.523545 | 0.574357 | 0.006971 | -0.836175 |
+| 23745 | 0.533509 | 0.586016 | 0.007120 | -0.834413 |
+| 23746 | 0.551785 | 0.611005 | 0.007204 | -0.836977 |
+| 23747 | 0.523175 | 0.583037 | 0.006943 | -0.836763 |
+| 23748 | 0.528446 | 0.586878 | 0.006923 | -0.837004 |
+| 23749 | 0.533858 | 0.589537 | 0.006941 | -0.838691 |
+| 23750 | 0.543892 | 0.592962 | 0.007247 | -0.833546 |
+
+Stage2S eval artifacts:
+
+- straight eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-33-09_z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253/eval_fixed_speed_23750_env64_3p5_4p5.txt`
+- standard turning eval first attempt:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-33-09_z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253/eval_fixed_command_23750_vy0p20_wz0p35_env32.txt`
+  - result: Isaac/Kit init crash before policy eval, `free(): corrupted unsorted chunks`.
+- standard turning eval retry:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-33-09_z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253/eval_fixed_command_23750_vy0p20_wz0p35_env32_retry1.txt`
+- stronger turning eval retry:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-33-09_z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253/eval_fixed_command_23750_vy0p35_wz0p60_env32_retry1.txt`
+
+Straight eval comparison (`vy=0.0`, `wz=0.0`, `num_envs=64`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2Q 23725 | 3.50 | 3.4737 | 0.1940 | 0.2455 | 0.3653 | 4 | 4 | 0 |
+| Stage2R 23750 | 3.50 | 3.4782 | 0.2106 | 0.2599 | 0.3808 | 3 | 3 | 0 |
+| Stage2S 23750 | 3.50 | 3.5108 | 0.1764 | 0.2296 | 0.3468 | 3 | 3 | 0 |
+| Stage2Q 23725 | 4.00 | 3.6494 | 0.3827 | 0.4251 | 0.9078 | 1 | 1 | 0 |
+| Stage2R 23750 | 4.00 | 3.5335 | 0.5043 | 0.5439 | 1.1123 | 2 | 2 | 0 |
+| Stage2S 23750 | 4.00 | 3.6661 | 0.3709 | 0.4149 | 0.8721 | 2 | 2 | 0 |
+| Stage2Q 23725 | 4.25 | 3.3341 | 0.9220 | 0.9541 | 2.6721 | 9 | 7 | 2 |
+| Stage2R 23750 | 4.25 | 3.4598 | 0.8002 | 0.8294 | 2.1524 | 3 | 1 | 2 |
+| Stage2S 23750 | 4.25 | 3.5969 | 0.6644 | 0.7025 | 1.7038 | 2 | 2 | 0 |
+| Stage2Q 23725 | 4.50 | 3.2825 | 1.2193 | 1.2421 | 3.2614 | 6 | 2 | 4 |
+| Stage2R 23750 | 4.50 | 3.2648 | 1.2369 | 1.2599 | 3.5180 | 9 | 6 | 3 |
+| Stage2S 23750 | 4.50 | 3.4128 | 1.0884 | 1.1146 | 2.7932 | 5 | 3 | 2 |
+
+Standard turning eval (`vy=0.20`, `wz=0.35`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2Q 23725 | 3.50 | 3.4161 | 0.1816 | 0.2049 | 0.2003 | 0.1178 | 0.3980 | 0.2569 | 0.3842 | 3 | 3 | 0 |
+| Stage2R 23750 | 3.50 | 3.3553 | 0.2065 | 0.2212 | 0.3057 | 0.1365 | 0.4097 | 0.3636 | 0.4373 | 5 | 5 | 0 |
+| Stage2S 23750 | 3.50 | 3.5094 | 0.1889 | 0.1984 | 0.1484 | 0.1062 | 0.3804 | 0.2021 | 0.3370 | 1 | 1 | 0 |
+| Stage2Q 23725 | 4.00 | 3.6211 | 0.1828 | 0.2097 | 0.3955 | 0.1345 | 0.4184 | 0.4414 | 0.9034 | 1 | 1 | 0 |
+| Stage2R 23750 | 4.00 | 3.6621 | 0.1904 | 0.2177 | 0.3598 | 0.1321 | 0.4017 | 0.4051 | 0.8191 | 1 | 1 | 0 |
+| Stage2S 23750 | 4.00 | 3.5825 | 0.1986 | 0.1838 | 0.4387 | 0.1353 | 0.4483 | 0.4835 | 1.0086 | 2 | 2 | 0 |
+| Stage2Q 23725 | 4.25 | 3.6146 | 0.1973 | 0.2261 | 0.6394 | 0.1411 | 0.4297 | 0.6732 | 1.5121 | 2 | 2 | 0 |
+| Stage2R 23750 | 4.25 | 3.6898 | 0.2056 | 0.2185 | 0.5641 | 0.1318 | 0.4040 | 0.5959 | 1.2799 | 1 | 1 | 0 |
+| Stage2S 23750 | 4.25 | 3.6450 | 0.1773 | 0.1692 | 0.6095 | 0.1259 | 0.4446 | 0.6382 | 1.4761 | 2 | 2 | 0 |
+
+Stronger turning eval (`vy=0.35`, `wz=0.60`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2Q 23725 | 3.50 | 3.4250 | 0.2788 | 0.3639 | 0.2113 | 0.1410 | 0.4764 | 0.2796 | 0.4160 | 3 | 3 | 0 |
+| Stage2R 23750 | 3.50 | 3.4001 | 0.3007 | 0.4071 | 0.2826 | 0.1388 | 0.4744 | 0.3422 | 0.4338 | 7 | 7 | 0 |
+| Stage2S 23750 | 3.50 | 3.4315 | 0.3350 | 0.3513 | 0.2351 | 0.1152 | 0.4640 | 0.2875 | 0.3782 | 5 | 5 | 0 |
+| Stage2Q 23725 | 4.00 | 3.6538 | 0.3016 | 0.3165 | 0.3642 | 0.1307 | 0.5113 | 0.4083 | 0.8117 | 0 | 0 | 0 |
+| Stage2R 23750 | 4.00 | 3.6225 | 0.3352 | 0.3620 | 0.3974 | 0.1329 | 0.4971 | 0.4429 | 0.8580 | 2 | 2 | 0 |
+| Stage2S 23750 | 4.00 | 3.6193 | 0.3271 | 0.3034 | 0.4015 | 0.1259 | 0.5095 | 0.4441 | 0.8533 | 2 | 2 | 0 |
+| Stage2Q 23725 | 4.25 | 3.5834 | 0.3075 | 0.3198 | 0.6707 | 0.1492 | 0.5293 | 0.7035 | 1.5562 | 1 | 1 | 0 |
+| Stage2R 23750 | 4.25 | 3.6588 | 0.3259 | 0.3277 | 0.5957 | 0.1429 | 0.5129 | 0.6301 | 1.2450 | 2 | 2 | 0 |
+| Stage2S 23750 | 4.25 | 3.6502 | 0.3364 | 0.2968 | 0.6025 | 0.1452 | 0.5314 | 0.6363 | 1.4329 | 2 | 2 | 0 |
+
+Stage2S checkpoint choice:
+
+- `model_23750.pt` is useful for straight/high-speed stability, but not a yaw winner.
+- Positive:
+  - straight tracking improved vs Stage2Q and Stage2R across `3.5-4.5 m/s`;
+  - straight `4.25` speed failures dropped to `0`, and straight `4.5` improved mean vx and p90 xy error;
+  - standard-turn `3.5` became very stable (`resets=1`) with strong forward tracking;
+  - strong-turn y tracking improved substantially (`mean_vy` near `0.33` for target `0.35`).
+- Negative:
+  - yaw authority regressed:
+    - standard `wz=0.35` reaches only `0.17-0.20`;
+    - strong `wz=0.60` reaches only `0.30-0.35`;
+    - Stage2R remains better for strong-yaw `mean_wz`.
+  - online mean reward is lower than Stage2Q/Stage2R because gated AMP gives less style reward.
+- Recommendation:
+  - keep Stage2S as a stability-preserving reference and proof that the AMP gate works;
+  - do not continue Stage2S blindly for yaw;
+  - next branch should keep the less destructive straight stability of Stage2S, but recover yaw by either loosening the yaw AMP gate or increasing yaw-specific task reward only for larger yaw commands.
