@@ -6604,3 +6604,12 @@ Note:
 - The `1` iteration / `32` env smoke is only a config and resume check.
 - Its AMP gate value should not be treated as a training conclusion; the first real `1024` env gate should be checked for AMP gate/replay activity.
 - `Config/reference_motion_max_speed` in TensorBoard reports the loaded motion file's observed max anchor speed (`5.2492`); the configured sampling cap is verified in `params/env.yaml` as `max_reference_speed=4.65`.
+
+Planned first training gate:
+
+- run name:
+  `z1_sprint_amp_stage2ac_mixedretention_from23448_cmdx-0p5_4p05_env1024_20260615_194712`
+- command:
+  continue from Stage2AA-cont `model_23448.pt` with `--reset_optimizer`, `1024` envs, `25` iterations.
+- purpose:
+  test whether mixed low/high command retention can keep the Stage2AA-cont low-speed push recovery while recovering some of Stage2AB's `3.5-4.0m/s` fixed-speed improvement.
