@@ -6419,3 +6419,81 @@ Planned first training gate:
   continue from Stage2AA-cont `model_23448.pt` with `--reset_optimizer`, `1024` envs, `25` iterations.
 - purpose:
   test whether the narrower `2.75-4.05m/s` transition task can improve fixed-command `4.0m/s` without losing `3.5m/s` and low-speed push recovery.
+
+### 2026-06-15 Stage2AB First Gate Result
+
+Run:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2ab_hightransition`
+- run:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-30-34_z1_sprint_amp_stage2ab_hightransition_from23448_cmdx2p75_4p05_env1024_20260615_192947`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2ab_hightransition_from23448_cmdx2p75_4p05_env1024_20260615_192947.out`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-15-14_z1_sprint_amp_stage2aa_continue_from23424_cmdx-1p0_4p1_env1024_20260615_191414/model_23448.pt`
+- final checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-30-34_z1_sprint_amp_stage2ab_hightransition_from23448_cmdx2p75_4p05_env1024_20260615_192947/model_23472.pt`
+
+Final online indicators from TensorBoard at step `23472`:
+
+| metric | value |
+| --- | ---: |
+| mean reward | 1.5647 |
+| mean episode length | 541.2500 |
+| timeout ratio | 0.8611 |
+| head/shoulder ratio | 0.1389 |
+| body contact ratio | 0.0000 |
+| speed failure ratio | 0.0000 |
+| track xy | 0.7838 |
+| track y | 0.0835 |
+| track yaw | 0.3073 |
+| forward speed progress | 0.0666 |
+| yaw progress | 0.0036 |
+| AMP step gate | 0.6089 |
+| AMP replay gate | 0.6089 |
+| AMP step reward | 0.0036 |
+| learning rate | 0.00003 |
+
+Straight fixed-speed eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-30-34_z1_sprint_amp_stage2ab_hightransition_from23448_cmdx2p75_4p05_env1024_20260615_192947/eval_fixed_speed_23472_env64_2p5_4p0.txt`
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AB 23472 | 2.50 | 2.5535 | 0.1179 | 0.1638 | 0.2649 | 4 | 4 | 0 |
+| Stage2AB 23472 | 3.00 | 2.9556 | 0.1698 | 0.2284 | 0.3421 | 5 | 5 | 0 |
+| Stage2AB 23472 | 3.50 | 3.3339 | 0.2639 | 0.3370 | 0.5583 | 1 | 1 | 0 |
+| Stage2AB 23472 | 4.00 | 2.8458 | 1.1888 | 1.2457 | 4.3494 | 18 | 8 | 10 |
+
+Moderate-turn fixed-command eval:
+
+- command: `vy=0.20`, `wz=0.35`
+- first artifact, interrupted after `3.0m/s`:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-30-34_z1_sprint_amp_stage2ab_hightransition_from23448_cmdx2p75_4p05_env1024_20260615_192947/eval_fixed_command_23472_vy0p20_wz0p35_env32.txt`
+- retry artifact for `3.5/4.0m/s`:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-30-34_z1_sprint_amp_stage2ab_hightransition_from23448_cmdx2p75_4p05_env1024_20260615_192947/eval_fixed_command_23472_vy0p20_wz0p35_env32_retry_3p5_4p0.txt`
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AB 23472 | 3.00 | 2.9426 | 0.1340 | 0.5785 | 0.1792 | 0.2607 | 0.3392 | 3 | 3 | 0 |
+| Stage2AB 23472 | 3.50 | 3.2043 | 0.1424 | 0.5518 | 0.3540 | 0.4348 | 0.7837 | 6 | 6 | 0 |
+| Stage2AB 23472 | 4.00 | 3.1566 | 0.1823 | 0.5614 | 0.8597 | 0.9264 | 2.9756 | 9 | 8 | 1 |
+
+Low-speed push recovery eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-30-34_z1_sprint_amp_stage2ab_hightransition_from23448_cmdx2p75_4p05_env1024_20260615_192947/eval_push_recovery_23472_low_vx0_1_push1_env16.txt`
+
+| checkpoint | target vx | recovery ratio | xy abs err | p90 xy err | p10 height | resets | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AB 23472 | 0.0 | 0.9583 | 0.3760 | 0.8622 | 0.6751 | 0 | 0 |
+| Stage2AB 23472 | 0.5 | 0.6250 | 0.5047 | 0.9331 | 0.6773 | 0 | 0 |
+| Stage2AB 23472 | 1.0 | 0.8333 | 0.4975 | 0.9521 | 0.6716 | 0 | 0 |
+
+Decision:
+
+- Stage2AB `model_23472.pt` is a useful high-speed-transition diagnostic, but it should not replace Stage2AA-cont `model_23448.pt` as the general mainline.
+- It substantially improves fixed straight `3.0/3.5m/s` and improves `4.0m/s` mean speed versus Stage2AA-cont (`2.8458` vs `2.2134`), but `4.0m/s` still has many resets.
+- It damages low-speed push recovery, especially `vx=0.5` (`0.6250` vs Stage2AA-cont `0.8333`).
+- Next branch should combine Stage2AB's high-speed transition benefit with explicit low-speed retention: restore more low/standing command mass or start from Stage2AA-cont `model_23448.pt` with a mixed command range rather than continuing the narrow high-speed-only Stage2AB distribution.
