@@ -4649,3 +4649,117 @@ Validation:
 - reward math smoke passed with `AppLauncher(headless=True)`:
   - input cases: half-speed same-direction yaw, over-target same-direction yaw, small command, wrong-direction yaw;
   - output: `[0.5, 1.0, 0.0, 0.0]`.
+
+Formal Stage2R run:
+
+- unit:
+  `z1_stage2r_yawauthority_20260615_131035.service`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-10-53_z1_sprint_amp_stage2r_yawauthority_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_yawprog0p45_env1024_20260615_131035`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2r_yawauthority_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_yawprog0p45_env1024_20260615_131035.out`
+- deploy yaml snapshot root:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2r_yawauthority_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_yawprog0p45_env1024_20260615_131035`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-53-44_z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328/model_23725.pt`
+- produced checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-10-53_z1_sprint_amp_stage2r_yawauthority_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_yawprog0p45_env1024_20260615_131035/model_23750.pt`
+- domain randomization changes:
+  none in this stage.
+- termination changes:
+  no termination logic changes; `head_shoulder_contact_termination_penalty` weight increased to `-300.0`.
+
+Training command:
+
+```bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2r_yawauthority \
+  --num_envs 1024 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-15_12-53-44_z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328 \
+  --checkpoint model_23725.pt \
+  --max_iterations 26 \
+  --run_name z1_sprint_amp_stage2r_yawauthority_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_yawprog0p45_env1024_20260615_131035 \
+  --logger tensorboard \
+  --deploy_yaml_root /home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2r_yawauthority_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_yawprog0p45_env1024_20260615_131035
+```
+
+Online indicators:
+
+| iteration | mean reward | mean episode length | straight prob | yaw-only prob | track xy | track y | progress | track yaw | yaw progress | timeout ratio | head/shoulder ratio | speed failure ratio |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 23726 | -4.06 | 27.11 | 0.3500 | 0.4500 | 0.0469 | 0.0059 | 0.0000 | 0.0198 | 0.0048 | 0.7361 | 0.2639 | 0.0000 |
+| 23729 | 0.31 | 74.36 | 0.3500 | 0.4500 | 0.1571 | 0.0201 | 0.0044 | 0.0657 | 0.0125 | 0.8611 | 0.1389 | 0.0000 |
+| 23732 | 2.80 | 140.22 | 0.3500 | 0.4500 | 0.2787 | 0.0344 | 0.0194 | 0.1174 | 0.0213 | 0.9792 | 0.0208 | 0.0000 |
+| 23735 | -0.89 | 214.06 | 0.3500 | 0.4500 | 0.3767 | 0.0469 | 0.0331 | 0.1572 | 0.0337 | 0.9583 | 0.0417 | 0.0000 |
+| 23738 | 8.32 | 282.57 | 0.3500 | 0.4500 | 0.5123 | 0.0616 | 0.0488 | 0.2206 | 0.0517 | 0.9792 | 0.0208 | 0.0000 |
+| 23741 | 11.51 | 368.25 | 0.3500 | 0.4500 | 0.6398 | 0.0778 | 0.0647 | 0.2627 | 0.0395 | 1.0000 | 0.0000 | 0.0000 |
+| 23744 | 13.35 | 430.48 | 0.3500 | 0.4500 | 0.7386 | 0.0945 | 0.0792 | 0.3083 | 0.0553 | 0.9583 | 0.0417 | 0.0000 |
+| 23747 | 14.10 | 495.98 | 0.3500 | 0.4500 | 0.8129 | 0.1005 | 0.0895 | 0.3346 | 0.0604 | 0.9375 | 0.0625 | 0.0000 |
+| 23750 | 14.51 | 550.99 | 0.3500 | 0.4500 | 0.9018 | 0.1143 | 0.1027 | 0.3715 | 0.0732 | 0.9229 | 0.0771 | 0.0000 |
+
+Stage2R eval artifacts:
+
+- straight eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-10-53_z1_sprint_amp_stage2r_yawauthority_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_yawprog0p45_env1024_20260615_131035/eval_fixed_speed_23750_env64_3p5_4p5.txt`
+- standard turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-10-53_z1_sprint_amp_stage2r_yawauthority_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_yawprog0p45_env1024_20260615_131035/eval_fixed_command_23750_vy0p20_wz0p35_env32.txt`
+- stronger turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-10-53_z1_sprint_amp_stage2r_yawauthority_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_yawprog0p45_env1024_20260615_131035/eval_fixed_command_23750_vy0p35_wz0p60_env32.txt`
+
+Straight eval comparison (`vy=0.0`, `wz=0.0`, `num_envs=64`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2Q 23725 | 3.50 | 3.4737 | 0.1940 | 0.2455 | 0.3653 | 4 | 4 | 0 |
+| Stage2R 23750 | 3.50 | 3.4782 | 0.2106 | 0.2599 | 0.3808 | 3 | 3 | 0 |
+| Stage2Q 23725 | 4.00 | 3.6494 | 0.3827 | 0.4251 | 0.9078 | 1 | 1 | 0 |
+| Stage2R 23750 | 4.00 | 3.5335 | 0.5043 | 0.5439 | 1.1123 | 2 | 2 | 0 |
+| Stage2Q 23725 | 4.25 | 3.3341 | 0.9220 | 0.9541 | 2.6721 | 9 | 7 | 2 |
+| Stage2R 23750 | 4.25 | 3.4598 | 0.8002 | 0.8294 | 2.1524 | 3 | 1 | 2 |
+| Stage2Q 23725 | 4.50 | 3.2825 | 1.2193 | 1.2421 | 3.2614 | 6 | 2 | 4 |
+| Stage2R 23750 | 4.50 | 3.2648 | 1.2369 | 1.2599 | 3.5180 | 9 | 6 | 3 |
+
+Standard turning eval (`vy=0.20`, `wz=0.35`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2Q 23725 | 3.50 | 3.4161 | 0.1816 | 0.2049 | 0.2003 | 0.1178 | 0.3980 | 0.2569 | 0.3842 | 3 | 3 | 0 |
+| Stage2R 23750 | 3.50 | 3.3553 | 0.2065 | 0.2212 | 0.3057 | 0.1365 | 0.4097 | 0.3636 | 0.4373 | 5 | 5 | 0 |
+| Stage2Q 23725 | 4.00 | 3.6211 | 0.1828 | 0.2097 | 0.3955 | 0.1345 | 0.4184 | 0.4414 | 0.9034 | 1 | 1 | 0 |
+| Stage2R 23750 | 4.00 | 3.6621 | 0.1904 | 0.2177 | 0.3598 | 0.1321 | 0.4017 | 0.4051 | 0.8191 | 1 | 1 | 0 |
+| Stage2Q 23725 | 4.25 | 3.6146 | 0.1973 | 0.2261 | 0.6394 | 0.1411 | 0.4297 | 0.6732 | 1.5121 | 2 | 2 | 0 |
+| Stage2R 23750 | 4.25 | 3.6898 | 0.2056 | 0.2185 | 0.5641 | 0.1318 | 0.4040 | 0.5959 | 1.2799 | 1 | 1 | 0 |
+
+Stronger turning eval (`vy=0.35`, `wz=0.60`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2Q 23725 | 3.50 | 3.4250 | 0.2788 | 0.3639 | 0.2113 | 0.1410 | 0.4764 | 0.2796 | 0.4160 | 3 | 3 | 0 |
+| Stage2R 23750 | 3.50 | 3.4001 | 0.3007 | 0.4071 | 0.2826 | 0.1388 | 0.4744 | 0.3422 | 0.4338 | 7 | 7 | 0 |
+| Stage2Q 23725 | 4.00 | 3.6538 | 0.3016 | 0.3165 | 0.3642 | 0.1307 | 0.5113 | 0.4083 | 0.8117 | 0 | 0 | 0 |
+| Stage2R 23750 | 4.00 | 3.6225 | 0.3352 | 0.3620 | 0.3974 | 0.1329 | 0.4971 | 0.4429 | 0.8580 | 2 | 2 | 0 |
+| Stage2Q 23725 | 4.25 | 3.5834 | 0.3075 | 0.3198 | 0.6707 | 0.1492 | 0.5293 | 0.7035 | 1.5562 | 1 | 1 | 0 |
+| Stage2R 23750 | 4.25 | 3.6588 | 0.3259 | 0.3277 | 0.5957 | 0.1429 | 0.5129 | 0.6301 | 1.2450 | 2 | 2 | 0 |
+
+Stage2R checkpoint choice:
+
+- `model_23750.pt` is a useful yaw-authority probe, not a final mainline checkpoint.
+- Positive:
+  - online survival recovered to `mean episode length=550.99`;
+  - `speed_tracking_failure_ratio` stayed at `0.0000`;
+  - `yaw_rate_progress` became measurable and rose to `0.0732`;
+  - stronger turning improved actual yaw at `3.5` and `4.0`:
+    - `wz=0.60`, `vx=3.5`: `0.3639 -> 0.4071`;
+    - `wz=0.60`, `vx=4.0`: `0.3165 -> 0.3620`.
+- Negative:
+  - standard turning still under-tracks yaw at about `0.22` for target `0.35`;
+  - strong-turn `3.5` head/shoulder resets worsened (`3 -> 7`);
+  - straight `4.0` and `4.5` degraded vs Stage2Q.
+- Recommendation:
+  - do not continue Stage2R blindly.
+  - next step should inspect whether the sprint motion prior is penalizing non-straight turning, because `sprint1_subject2` is primarily a straight sprint prior.
+  - likely next branch: keep sprint prior strong on near-straight commands, but reduce or gate motion-prior reward when `abs(yaw command)` or lateral command is high, so yaw/turning can be learned without fighting a straight-sprint style discriminator.
