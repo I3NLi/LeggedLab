@@ -67,6 +67,25 @@ def forward_speed_progress(
     return reward * (command_x >= float(min_command_x)).float()
 
 
+def lateral_speed_progress(
+    env: BaseEnv,
+    min_command_abs: float,
+    max_ratio: float = 1.0,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    root_quat_w = env._tensor(asset.data.root_quat_w)
+    root_lin_vel_w = env._tensor(asset.data.root_lin_vel_w)
+    vel_yaw = math_utils.quat_apply_inverse(
+        math_utils.yaw_quat(root_quat_w), root_lin_vel_w[:, :3]
+    )
+    command_y = env._command_tensor()[:, 1]
+    command_abs = torch.abs(command_y)
+    signed_ratio = vel_yaw[:, 1] * torch.sign(command_y) / torch.clamp(command_abs, min=1.0e-6)
+    reward = torch.clamp(signed_ratio, min=0.0, max=float(max_ratio))
+    return reward * (command_abs >= float(min_command_abs)).float()
+
+
 def track_ang_vel_z_world_exp(
     env: BaseEnv, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:
