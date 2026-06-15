@@ -4987,3 +4987,109 @@ Stage2S checkpoint choice:
   - keep Stage2S as a stability-preserving reference and proof that the AMP gate works;
   - do not continue Stage2S blindly for yaw;
   - next branch should keep the less destructive straight stability of Stage2S, but recover yaw by either loosening the yaw AMP gate or increasing yaw-specific task reward only for larger yaw commands.
+
+### 2026-06-15 Stage2T Agility Authority: strengthen y and yaw commands
+
+User direction:
+
+- Do not focus only on x speed.
+- Strengthen y velocity and turning/yaw behavior as first-class targets.
+
+Code changes:
+
+- commit: `e1af8a6 Add Z1 sprint Stage2T agility authority`
+- Added `mdp.lateral_speed_progress`, mirroring `yaw_rate_progress` but for signed body-y velocity.
+- Added task: `magicbot_z1_flat_sprint_amp_stage2t_agilityauthority`
+- Stage2T config:
+  - starts from Stage2S settings;
+  - `lin_vel_y=(-0.35, 0.35)`;
+  - `ang_vel_z=(-1.00, 1.00)`;
+  - `straight_command_prob=0.25`;
+  - `yaw_only_command_prob=0.50`;
+  - `track_lin_vel_y_exp.weight=0.45`, `std=0.36`;
+  - `lateral_speed_progress.weight=0.28`, `min_command_abs=0.16`;
+  - `track_ang_vel_z_exp.weight=2.65`, `std=0.34`;
+  - `yaw_rate_progress.weight=0.70`, `min_command_abs=0.30`;
+  - `forward_speed_progress.weight=0.20`;
+  - AMP gate loosened to `reward_max_command_y_abs=0.18`, `reward_command_y_gate_width=0.20`,
+    `reward_max_command_yaw_abs=0.35`, `reward_command_yaw_gate_width=0.35`.
+
+Training:
+
+- unit:
+  `z1_stage2t_agilityauthority_20260615_135006.service`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-50-21_z1_sprint_amp_stage2t_agilityauthority_fromstage2s23750_cmdx3p35_4p55_cmdy0p35_yaw1p00_straight0p25_yawonly0p50_yprog0p28_yawprog0p70_ampgate_y0p18_yaw0p35_env1024_20260615_135006`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2t_agilityauthority_fromstage2s23750_cmdx3p35_4p55_cmdy0p35_yaw1p00_straight0p25_yawonly0p50_yprog0p28_yawprog0p70_ampgate_y0p18_yaw0p35_env1024_20260615_135006.out`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-33-09_z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253/model_23750.pt`
+- produced checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-50-21_z1_sprint_amp_stage2t_agilityauthority_fromstage2s23750_cmdx3p35_4p55_cmdy0p35_yaw1p00_straight0p25_yawonly0p50_yprog0p28_yawprog0p70_ampgate_y0p18_yaw0p35_env1024_20260615_135006/model_23775.pt`
+
+Online final indicators:
+
+| iteration | mean reward | mean episode length | track xy | track y | forward progress | lateral progress | track yaw | yaw progress | timeout ratio | head/shoulder ratio | speed failure ratio |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 23775 | 13.94 | 556.19 | 0.8531 | 0.1738 | 0.0875 | 0.0167 | 0.3430 | 0.1141 | 0.8542 | 0.1458 | 0.0000 |
+
+Straight eval (`vy=0.0`, `wz=0.0`, `num_envs=64`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2S 23750 | 3.50 | 3.5108 | 0.1764 | 0.2296 | 0.3468 | 3 | 3 | 0 |
+| Stage2T 23775 | 3.50 | 3.5074 | 0.1784 | 0.2255 | 0.3523 | 2 | 2 | 0 |
+| Stage2S 23750 | 4.00 | 3.6661 | 0.3709 | 0.4149 | 0.8721 | 2 | 2 | 0 |
+| Stage2T 23775 | 4.00 | 3.5592 | 0.4826 | 0.5239 | 1.2495 | 7 | 6 | 1 |
+| Stage2S 23750 | 4.25 | 3.5969 | 0.6644 | 0.7025 | 1.7038 | 2 | 2 | 0 |
+| Stage2T 23775 | 4.25 | 3.3855 | 0.8738 | 0.9045 | 2.7989 | 8 | 5 | 3 |
+| Stage2S 23750 | 4.50 | 3.4128 | 1.0884 | 1.1146 | 2.7932 | 5 | 3 | 2 |
+| Stage2T 23775 | 4.50 | 3.1335 | 1.3677 | 1.3920 | 3.8526 | 14 | 10 | 4 |
+
+Standard turning eval (`vy=0.20`, `wz=0.35`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2S 23750 | 3.50 | 3.5094 | 0.1889 | 0.1984 | 0.1484 | 0.1062 | 0.3804 | 0.2021 | 0.3370 | 1 | 1 | 0 |
+| Stage2T 23775 | 3.50 | 3.5129 | 0.2292 | 0.1972 | 0.1555 | 0.0984 | 0.3714 | 0.2041 | 0.3374 | 2 | 2 | 0 |
+| Stage2S 23750 | 4.00 | 3.5825 | 0.1986 | 0.1838 | 0.4387 | 0.1353 | 0.4483 | 0.4835 | 1.0086 | 2 | 2 | 0 |
+| Stage2T 23775 | 4.00 | 3.6234 | 0.2184 | 0.1977 | 0.3949 | 0.1171 | 0.4181 | 0.4322 | 1.0149 | 2 | 2 | 0 |
+| Stage2S 23750 | 4.25 | 3.6450 | 0.1773 | 0.1692 | 0.6095 | 0.1259 | 0.4446 | 0.6382 | 1.4761 | 2 | 2 | 0 |
+| Stage2T 23775 | 4.25 | 3.6819 | 0.1984 | 0.1997 | 0.5732 | 0.1335 | 0.4683 | 0.6051 | 1.3812 | 2 | 2 | 0 |
+
+Strong turning eval (`vy=0.35`, `wz=0.60`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2S 23750 | 3.50 | 3.4315 | 0.3350 | 0.3513 | 0.2351 | 0.1152 | 0.4640 | 0.2875 | 0.3782 | 5 | 5 | 0 |
+| Stage2T 23775 | 3.50 | 3.4640 | 0.3530 | 0.3418 | 0.2216 | 0.1086 | 0.4576 | 0.2680 | 0.3675 | 5 | 5 | 0 |
+| Stage2S 23750 | 4.00 | 3.6193 | 0.3271 | 0.3034 | 0.4015 | 0.1259 | 0.5095 | 0.4441 | 0.8533 | 2 | 2 | 0 |
+| Stage2T 23775 | 4.00 | 3.7061 | 0.3672 | 0.3023 | 0.3110 | 0.1153 | 0.4768 | 0.3528 | 0.6988 | 0 | 0 | 0 |
+
+Short probes:
+
+- `vy=0.20`, `wz=0.35`, `vx=3.5`, `num_envs=8`, `warmup=0.5`, `duration=1`:
+  `mean_vx=1.8048`, `mean_vy=0.1817`, `mean_wz=0.4761`, resets `0`.
+- `vy=0.35`, `wz=0.60`, `vx=3.5`, `num_envs=8`, `warmup=0.5`, `duration=1`:
+  `mean_vx=1.7897`, `mean_vy=0.2652`, `mean_wz=0.6824`, resets `0`.
+
+Stage2T checkpoint choice:
+
+- `model_23775.pt` is not a deployment/mainline winner.
+- Positive:
+  - y tracking improved, especially in strong turning:
+    - target `vy=0.35`, `vx=4.0`: Stage2S `mean_vy=0.3271`, Stage2T `mean_vy=0.3672`;
+    - strong-turn `xy_abs_err` improved at `vx=3.5` and `vx=4.0`;
+  - standard-turn forward tracking is slightly better at `vx=4.0` and `vx=4.25`;
+  - speed-tracking failure remained `0` in turning eval.
+- Negative:
+  - stable yaw tracking did not materially improve:
+    - standard `wz=0.35` remains around `0.20`;
+    - strong `wz=0.60` remains around `0.30-0.34`;
+  - straight high-speed stability regressed:
+    - more head/shoulder resets at `4.0-4.5`;
+    - larger straight speed error than Stage2S at `4.0+`.
+- Recommendation:
+  - keep Stage2T as evidence that y authority can be strengthened;
+  - do not continue Stage2T blindly;
+  - next branch should target yaw separately, likely by using a yaw-specialization phase rather than pairing large yaw with the full `3.35-4.55 m/s` x-speed range immediately.
