@@ -6303,3 +6303,110 @@ Decision:
 - It improves `3.5m/s` straight tracking and moderate-turn tracking, and it does not hurt low-speed push recovery.
 - Do not continue the same config blindly toward Stage 2. The `4.0m/s` straight command still has many resets, and `4.0m/s` turning has more head/shoulder resets than `model_23424.pt`.
 - Next branch should focus specifically on stable `3.5-4.0m/s` transition: more controlled command curriculum around `3.25-4.0`, stronger high-speed head/shoulder guard, and no expansion beyond `4.1m/s` until fixed-command `4.0` stops producing speed-tracking reset collapse.
+
+### 2026-06-15 Stage2AB High-Transition Design
+
+Reason:
+
+- Stage2AA-cont `model_23448.pt` is the best current `3.0-3.5m/s` candidate.
+- It still fails fixed straight `4.0m/s` with many speed-tracking resets.
+- The next branch should not expand the max command; it should stabilize the `3.5-4.0m/s` transition and reduce high-speed head/shoulder resets.
+
+New task:
+
+- `magicbot_z1_flat_sprint_amp_stage2ab_hightransition`
+
+Start checkpoint:
+
+- `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-15-14_z1_sprint_amp_stage2aa_continue_from23424_cmdx-1p0_4p1_env1024_20260615_191414/model_23448.pt`
+
+Stage2AB settings:
+
+- inherit from Stage2AA;
+- use `--reset_optimizer` because this is a new task with fixed LR `3e-5`;
+- command range:
+  - `lin_vel_x=(2.75, 4.05)`;
+  - `lin_vel_y=(-0.20, 0.20)`;
+  - `ang_vel_z=(-0.45, 0.45)`;
+  - `rel_standing_envs=0.10`;
+  - `straight_command_prob=0.55`;
+  - `yaw_only_command_prob=0.20`;
+- push randomization:
+  - interval `(8.0, 12.0)s`;
+  - linear impulse `x/y=(-0.9, 0.9)`;
+  - yaw impulse `(-0.5, 0.5)`;
+- reference sampling:
+  - command-conditioned sampling remains enabled;
+  - `min_command_speed=2.75`;
+  - `max_reference_speed=4.50`;
+  - `speed_match_tolerance=0.75`;
+  - command scale: `x=0.78`, `y=0.18`, `yaw=0.26`;
+- AMP:
+  - reward coef `0.05`;
+  - AMP gate starts at `3.0m/s`;
+  - soft gates: `|y|<=0.18`, `|yaw|<=0.35`;
+- reward:
+  - stronger straight speed tracking: `track_lin_vel_xy_exp.weight=1.85`, `std=0.80`;
+  - moderate yaw/lateral tracking to avoid destabilizing the high-speed transition;
+  - `forward_speed_progress.weight=0.22`, min x `3.25`;
+  - stronger head/shoulder penalty `-300`;
+  - slightly stronger torso/flat/ang-xy posture guards;
+  - mild energy/action-rate penalties so the sprint stride is not suppressed.
+
+Validation plan:
+
+- compile `z1_config.py` and task registry;
+- smoke one iteration from `model_23448.pt` with `32` envs and `--reset_optimizer`;
+- confirm YAML/event values:
+  - command range;
+  - `speed_tracking_duration_s=2.5`;
+  - fixed LR `3e-5`;
+  - AMP reward gate `3.0`;
+  - expert command conditioning enabled.
+
+First gate:
+
+- if smoke passes, train `25` iterations with `1024` envs from `model_23448.pt`;
+- fixed-speed eval at `2.5/3.0/3.5/4.0`;
+- moderate-turn eval at `vy=0.20,wz=0.35`;
+- low-speed push recovery eval at `vx=0.0/0.5/1.0`;
+- accept only if `4.0m/s` improves without losing the Stage2AA-cont low-speed push recovery or the new `3.5m/s` improvement.
+
+Validation:
+
+- compile passed for:
+  - `legged_lab/envs/magicbot_z1/z1_config.py`;
+  - `legged_lab/envs/__init__.py`.
+- smoke run:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-27-56_z1_stage2ab_hightransition_from23448_smoke_20260615_192744`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_stage2ab_hightransition_from23448_smoke_20260615_192744.out`
+- smoke generated:
+  - `model_23448.pt`;
+  - `params/env.yaml`;
+  - `params/agent.yaml`;
+  - deploy YAML files;
+  - TensorBoard event file.
+- smoke YAML/event confirmed:
+  - `speed_tracking_duration_s=2.5`;
+  - `lin_vel_x=(2.75, 4.05)`;
+  - `lin_vel_y=(-0.20, 0.20)`;
+  - `ang_vel_z=(-0.45, 0.45)`;
+  - `rel_standing_envs=0.10`;
+  - `straight_command_prob=0.55`;
+  - `yaw_only_command_prob=0.20`;
+  - `command_slew_rate_x=2.0`;
+  - `learning_rate=3e-5`;
+  - `schedule=fixed`;
+  - `reward_min_command_speed=3.0`;
+  - `expert_command_conditioning=true`.
+- smoke TensorBoard at step `23448`:
+  - `Train/mean_reward=0.3000`;
+  - `Train/mean_episode_length=23.0`;
+  - `Loss/learning_rate=3e-5`;
+  - `AMP/mean_step_gate=0.0`.
+
+Note:
+
+- The `1` iteration / `32` env smoke is only a config and resume check.
+- Its AMP gate value should not be treated as a training conclusion; the first real `1024` env gate should be checked for AMP gate/replay activity.
