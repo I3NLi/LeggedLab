@@ -4471,3 +4471,112 @@ Validation:
   - `yaw_only_y_max_abs=0.000000`
   - `yaw_only_wz_abs_mean=0.324002`
   - `full_yaw_abs_mean=0.268361`
+
+Formal Stage2Q run:
+
+- unit:
+  `z1_stage2q_yawfocus_20260615_125328.service`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-53-44_z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328.out`
+- deploy yaml snapshot root:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-38-15_z1_sprint_amp_stage2p_mixedcommand_fromstage2l23675_cmdx3p35_4p55_cmdy0p35_yaw0p65_straight0p45_env1024_20260615_123800/model_23700.pt`
+- produced checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-53-44_z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328/model_23725.pt`
+
+Training command:
+
+```bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+PYTHONPATH=/home/hiyio/LeggedLab \
+/home/hiyio/anaconda3/envs/env_isaacsim51/bin/python legged_lab/scripts/train.py \
+  --task magicbot_z1_flat_sprint_amp_stage2q_yawfocus \
+  --num_envs 1024 \
+  --headless \
+  --resume True \
+  --load_run 2026-06-15_12-38-15_z1_sprint_amp_stage2p_mixedcommand_fromstage2l23675_cmdx3p35_4p55_cmdy0p35_yaw0p65_straight0p45_env1024_20260615_123800 \
+  --checkpoint model_23700.pt \
+  --max_iterations 26 \
+  --run_name z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328 \
+  --logger tensorboard \
+  --deploy_yaml_root /home/hiyio/LeggedLab/logs/magicbot_z1_flat/deploy_snapshots/z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328
+```
+
+Online indicators:
+
+| iteration | mean reward | mean episode length | straight prob | yaw-only prob | track xy | track y | progress | track yaw | timeout ratio | head/shoulder ratio | speed failure ratio |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 23701 | -3.60 | 26.58 | 0.4000 | 0.3500 | 0.0550 | 0.0088 | 0.0000 | 0.0224 | 0.7639 | 0.2361 | 0.0000 |
+| 23704 | -2.43 | 72.62 | 0.4000 | 0.3500 | 0.1601 | 0.0265 | 0.0028 | 0.0675 | 0.9167 | 0.0833 | 0.0000 |
+| 23707 | 3.14 | 141.02 | 0.4000 | 0.3500 | 0.2481 | 0.0433 | 0.0123 | 0.1194 | 0.8333 | 0.1250 | 0.0417 |
+| 23710 | 4.98 | 214.02 | 0.4000 | 0.3500 | 0.3722 | 0.0626 | 0.0308 | 0.1627 | 0.9444 | 0.0417 | 0.0139 |
+| 23713 | 7.98 | 278.28 | 0.4000 | 0.3500 | 0.5305 | 0.0857 | 0.0516 | 0.2182 | 1.0000 | 0.0000 | 0.0000 |
+| 23716 | 10.78 | 365.04 | 0.4000 | 0.3500 | 0.6282 | 0.1039 | 0.0732 | 0.2772 | 0.9896 | 0.0104 | 0.0000 |
+| 23719 | 12.18 | 421.85 | 0.4000 | 0.3500 | 0.7312 | 0.1198 | 0.0803 | 0.3091 | 0.9375 | 0.0625 | 0.0000 |
+| 23725 | 14.68 | 544.31 | 0.4000 | 0.3500 | 0.8766 | 0.1456 | 0.1083 | 0.3717 | 0.9028 | 0.0972 | 0.0000 |
+
+Stage2Q eval artifacts:
+
+- straight eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-53-44_z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328/eval_fixed_speed_23725_env64_3p5_4p5.txt`
+- standard turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-53-44_z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328/eval_fixed_command_23725_vy0p20_wz0p35_env32.txt`
+- stronger turning eval:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-53-44_z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328/eval_fixed_command_23725_vy0p35_wz0p60_env32.txt`
+
+Straight eval comparison (`vy=0.0`, `wz=0.0`, `num_envs=64`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2P 23700 | 3.50 | 3.5052 | 0.1971 | 0.2474 | 0.3601 | 3 | 3 | 0 |
+| Stage2Q 23725 | 3.50 | 3.4737 | 0.1940 | 0.2455 | 0.3653 | 4 | 4 | 0 |
+| Stage2P 23700 | 4.00 | 3.6205 | 0.4236 | 0.4674 | 1.0306 | 5 | 5 | 0 |
+| Stage2Q 23725 | 4.00 | 3.6494 | 0.3827 | 0.4251 | 0.9078 | 1 | 1 | 0 |
+| Stage2P 23700 | 4.25 | 3.4088 | 0.8562 | 0.8945 | 2.5486 | 5 | 3 | 2 |
+| Stage2Q 23725 | 4.25 | 3.3341 | 0.9220 | 0.9541 | 2.6721 | 9 | 7 | 2 |
+| Stage2P 23700 | 4.50 | 3.1587 | 1.3445 | 1.3685 | 3.9636 | 4 | 1 | 3 |
+| Stage2Q 23725 | 4.50 | 3.2825 | 1.2193 | 1.2421 | 3.2614 | 6 | 2 | 4 |
+
+Standard turning eval (`vy=0.20`, `wz=0.35`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2P 23700 | 3.50 | 3.3981 | 0.2056 | 0.2302 | 0.2423 | 0.1226 | 0.4333 | 0.2979 | 0.4079 | 2 | 2 | 0 |
+| Stage2Q 23725 | 3.50 | 3.4161 | 0.1816 | 0.2049 | 0.2003 | 0.1178 | 0.3980 | 0.2569 | 0.3842 | 3 | 3 | 0 |
+| Stage2P 23700 | 4.00 | 3.5752 | 0.2149 | 0.2161 | 0.4474 | 0.1302 | 0.4341 | 0.4882 | 1.0765 | 1 | 1 | 0 |
+| Stage2Q 23725 | 4.00 | 3.6211 | 0.1828 | 0.2097 | 0.3955 | 0.1345 | 0.4184 | 0.4414 | 0.9034 | 1 | 1 | 0 |
+| Stage2P 23700 | 4.25 | 3.6176 | 0.1910 | 0.2189 | 0.6375 | 0.1407 | 0.4451 | 0.6711 | 1.4894 | 1 | 1 | 0 |
+| Stage2Q 23725 | 4.25 | 3.6146 | 0.1973 | 0.2261 | 0.6394 | 0.1411 | 0.4297 | 0.6732 | 1.5121 | 2 | 2 | 0 |
+
+Stronger turning eval (`vy=0.35`, `wz=0.60`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2N 23700 | 3.50 | 3.4933 | 0.2881 | 0.3931 | 0.1890 | 0.1338 | 0.4483 | 0.2566 | 0.3829 | 2 | 2 | 0 |
+| Stage2P 23700 | 3.50 | 3.2861 | 0.2642 | 0.3333 | 0.3511 | 0.1724 | 0.5466 | 0.4288 | 0.7774 | 7 | 7 | 0 |
+| Stage2Q 23725 | 3.50 | 3.4250 | 0.2788 | 0.3639 | 0.2113 | 0.1410 | 0.4764 | 0.2796 | 0.4160 | 3 | 3 | 0 |
+| Stage2N 23700 | 4.00 | 3.5754 | 0.2999 | 0.3653 | 0.4437 | 0.1484 | 0.4940 | 0.4936 | 1.1496 | 2 | 2 | 0 |
+| Stage2P 23700 | 4.00 | 3.4306 | 0.2820 | 0.3546 | 0.5872 | 0.1819 | 0.5787 | 0.6427 | 1.6923 | 7 | 7 | 0 |
+| Stage2Q 23725 | 4.00 | 3.6538 | 0.3016 | 0.3165 | 0.3642 | 0.1307 | 0.5113 | 0.4083 | 0.8117 | 0 | 0 | 0 |
+| Stage2N 23700 | 4.25 | 3.4882 | 0.2888 | 0.3826 | 0.7645 | 0.1614 | 0.5436 | 0.7994 | 1.7959 | 3 | 3 | 0 |
+| Stage2P 23700 | 4.25 | 3.4156 | 0.2623 | 0.3033 | 0.8384 | 0.1852 | 0.5795 | 0.8773 | 2.1819 | 4 | 3 | 1 |
+| Stage2Q 23725 | 4.25 | 3.5834 | 0.3075 | 0.3198 | 0.6707 | 0.1492 | 0.5293 | 0.7035 | 1.5562 | 1 | 1 | 0 |
+
+Stage2Q checkpoint choice:
+
+- `model_23725.pt` is a useful agility checkpoint, but not yet a deployment/play winner.
+- Positive:
+  - online learning recovered cleanly to `mean reward=14.68`, `mean episode length=544.31`;
+  - `speed_tracking_failure_ratio` returned to `0.0000`;
+  - standard turning keeps y tracking usable (`mean_vy` around `0.18-0.20` for target `0.20`);
+  - stronger turning improves stability and forward speed vs Stage2P, especially at `4.00` and `4.25`, with fewer resets.
+- Remaining issue:
+  - yaw still under-tracks. Standard `wz=0.35` reaches only about `0.20-0.23`; stronger `wz=0.60` reaches only about `0.32-0.36`.
+  - simply widening yaw command and adding yaw-only sampling helped stability more than actual yaw authority.
+- Recommendation:
+  - keep Stage2Q as a useful branch for y/turn stability analysis;
+  - do not keep training Stage2Q blindly for many checkpoints;
+  - next yaw step should make yaw authority more explicit, for example a yaw-error gated reward/penalty balance or a short yaw curriculum that raises yaw command only after forward speed is stable.
