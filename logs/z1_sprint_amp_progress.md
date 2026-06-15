@@ -4763,3 +4763,81 @@ Stage2R checkpoint choice:
   - do not continue Stage2R blindly.
   - next step should inspect whether the sprint motion prior is penalizing non-straight turning, because `sprint1_subject2` is primarily a straight sprint prior.
   - likely next branch: keep sprint prior strong on near-straight commands, but reduce or gate motion-prior reward when `abs(yaw command)` or lateral command is high, so yaw/turning can be learned without fighting a straight-sprint style discriminator.
+
+## Stage2S: gated sprint prior for turning commands
+
+Purpose:
+
+- Stage2R proved that a direct yaw progress reward can move strong-turn yaw slightly, but it also degraded some straight/high-speed metrics and did not solve standard yaw tracking.
+- Code inspection found that the AMP reward was gated only by forward/lateral command speed:
+  - runner passed only `command_speeds` to `AMPPPO.predict_amp_reward`;
+  - `AMPPPO` applied only `command_speed >= reward_min_command_speed`;
+  - there was no y/yaw command gate.
+- Because `sprint1_subject2` is primarily a straight sprint prior, this can make high-yaw/high-lateral commands fight a straight-sprint discriminator.
+
+AMP infrastructure change:
+
+- Added optional motion-prior command gates:
+  - `motion_prior.reward_max_command_y_abs`
+  - `motion_prior.reward_command_y_gate_width`
+  - `motion_prior.reward_max_command_yaw_abs`
+  - `motion_prior.reward_command_yaw_gate_width`
+- Defaults are all `0.0`, so existing tasks are unchanged.
+- Runner now passes the full command tensor to `AMPPPO.predict_amp_reward`.
+- `AMPPPO.amp_reward_gate()` combines:
+  - existing speed gate;
+  - optional soft upper gate for `abs(command_y)`;
+  - optional soft upper gate for `abs(command_yaw)`.
+- The same gate is used for AMP reward and AMP policy replay insertion, so turning samples are not over-represented as fake straight-sprint samples when the prior is intentionally disabled for that command region.
+- Added TensorBoard scalar:
+  - `AMP/mean_step_gate`
+
+Config changes:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2s_gatedprior`
+- base env: `MagicBotZ1FlatSprintAMPStage2RYawAuthorityEnvCfg`
+- start checkpoint planned:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_12-53-44_z1_sprint_amp_stage2q_yawfocus_fromstage2p23700_cmdx3p35_4p55_cmdy0p30_yaw0p75_straight0p40_yawonly0p35_env1024_20260615_125328/model_23725.pt`
+- reason for starting from Stage2Q:
+  - Stage2Q is the stable turn/y checkpoint;
+  - Stage2R is useful as a probe but degraded some straight/high-speed metrics.
+- command/reward:
+  - same y/yaw/yaw-progress setup as Stage2R;
+  - `lin_vel_x=(3.35, 4.55)`
+  - `lin_vel_y=(-0.25, 0.25)`
+  - `ang_vel_z=(-0.85, 0.85)`
+  - `straight_command_prob=0.35`
+  - `yaw_only_command_prob=0.45`
+  - `yaw_rate_progress.weight=0.45`
+- motion prior:
+  - `reward_coef=0.08`
+  - `reward_min_command_speed=3.35`
+  - `reward_max_command_y_abs=0.12`
+  - `reward_command_y_gate_width=0.13`
+  - `reward_max_command_yaw_abs=0.20`
+  - `reward_command_yaw_gate_width=0.25`
+- agent:
+  - `learning_rate=8e-6`
+  - `save_interval=25`
+- retained safety:
+  - `speed_tracking_duration_s=2.5`
+- domain randomization changes:
+  none in this stage.
+- termination changes:
+  no termination logic changes; inherits Stage2R head/shoulder termination penalty weight `-300.0`.
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/amp/ppo.py`
+  - `legged_lab/amp/runner.py`
+  - `legged_lab/envs/base/base_env_config.py`
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- registry check passed with `AppLauncher(headless=True)`:
+  - Stage2R keeps `reward_max_command_y_abs=0.0`, `reward_max_command_yaw_abs=0.0`;
+  - Stage2S resolves with `reward_max_command_y_abs=0.12`, `reward_command_y_gate_width=0.13`;
+  - Stage2S resolves with `reward_max_command_yaw_abs=0.20`, `reward_command_yaw_gate_width=0.25`.
+- AMP gate smoke passed:
+  - commands tested: straight high speed, small y/yaw, high y/yaw, max yaw, low speed;
+  - output gate: `[1.0, 1.0, 0.0, 0.0, 0.0]`.

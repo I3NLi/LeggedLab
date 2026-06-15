@@ -62,6 +62,7 @@ class AMPOnPolicyRunner(OnPolicyRunner):
             start = time.time()
             amp_step_reward_sum = 0.0
             amp_step_logit_sum = 0.0
+            amp_step_gate_sum = 0.0
             amp_step_count = 0
 
             with torch.inference_mode():
@@ -72,14 +73,27 @@ class AMPOnPolicyRunner(OnPolicyRunner):
 
                     next_amp_obs = self.env.get_amp_observations().to(self.device)
                     amp_obs_frames = torch.cat((amp_obs_frames[:, 1:], next_amp_obs.unsqueeze(1)), dim=1)
-                    command_speeds = self._command_speeds()
-                    rewards_with_amp, amp_rewards, amp_logits = self.alg.predict_amp_reward(
+                    command_values = self._command_values()
+                    command_speeds = (
+                        torch.norm(command_values[:, :2].to(self.device), dim=-1)
+                        if command_values is not None
+                        else None
+                    )
+                    rewards_with_amp, amp_rewards, amp_logits, amp_gate = self.alg.predict_amp_reward(
                         amp_obs_frames,
                         rewards,
                         command_speeds=command_speeds,
+                        command_values=command_values,
                     )
 
-                    self.alg.process_env_step(obs, rewards_with_amp, dones, extras, amp_obs_frames=amp_obs_frames)
+                    self.alg.process_env_step(
+                        obs,
+                        rewards_with_amp,
+                        dones,
+                        extras,
+                        amp_obs_frames=amp_obs_frames,
+                        amp_replay_gate=amp_gate,
+                    )
 
                     done_ids = dones.nonzero(as_tuple=False).flatten()
                     if done_ids.numel() > 0:
@@ -90,6 +104,7 @@ class AMPOnPolicyRunner(OnPolicyRunner):
                     intrinsic_rewards = self.alg.intrinsic_rewards if self.alg.rnd else None
                     amp_step_reward_sum += float(amp_rewards.mean().item())
                     amp_step_logit_sum += float(amp_logits.mean().item())
+                    amp_step_gate_sum += float(amp_gate.mean().item())
                     amp_step_count += 1
 
                     if self.log_dir is not None:
@@ -129,6 +144,7 @@ class AMPOnPolicyRunner(OnPolicyRunner):
             loss_dict = self.alg.update()
             mean_amp_step_reward = amp_step_reward_sum / max(amp_step_count, 1)
             mean_amp_step_logit = amp_step_logit_sum / max(amp_step_count, 1)
+            mean_amp_step_gate = amp_step_gate_sum / max(amp_step_count, 1)
 
             stop = time.time()
             learn_time = stop - start
@@ -157,6 +173,7 @@ class AMPOnPolicyRunner(OnPolicyRunner):
             self.writer.add_scalar("AMP/mean_episode_reward", statistics.mean(locs["amp_rewbuffer"]), locs["it"])
         self.writer.add_scalar("AMP/mean_step_reward", locs["mean_amp_step_reward"], locs["it"])
         self.writer.add_scalar("AMP/mean_step_logit", locs["mean_amp_step_logit"], locs["it"])
+        self.writer.add_scalar("AMP/mean_step_gate", locs["mean_amp_step_gate"], locs["it"])
 
     def save(self, path: str, infos: dict | None = None) -> None:
         saved_dict = {
@@ -248,6 +265,10 @@ class AMPOnPolicyRunner(OnPolicyRunner):
             amp_replay_buffer_size=int(motion_prior_cfg.get("replay_buffer_size", 100_000)),
             amp_reward_coef=float(motion_prior_cfg.get("reward_coef", 0.2)),
             amp_reward_min_command_speed=float(motion_prior_cfg.get("reward_min_command_speed", 2.0)),
+            amp_reward_max_command_y_abs=float(motion_prior_cfg.get("reward_max_command_y_abs", 0.0)),
+            amp_reward_command_y_gate_width=float(motion_prior_cfg.get("reward_command_y_gate_width", 0.0)),
+            amp_reward_max_command_yaw_abs=float(motion_prior_cfg.get("reward_max_command_yaw_abs", 0.0)),
+            amp_reward_command_yaw_gate_width=float(motion_prior_cfg.get("reward_command_yaw_gate_width", 0.0)),
             amp_discriminator_hidden_dims=list(motion_prior_cfg.get("discriminator_hidden_dims", [256, 128])),
             amp_discriminator_learning_rate=float(motion_prior_cfg.get("discriminator_learning_rate", 1.0e-4)),
             amp_discriminator_weight_decay=float(motion_prior_cfg.get("discriminator_weight_decay", 1.0e-4)),
@@ -260,11 +281,15 @@ class AMPOnPolicyRunner(OnPolicyRunner):
         alg.init_storage("rl", self.env.num_envs, self.num_steps_per_env, obs, [self.env.num_actions])
         return alg
 
-    def _command_speeds(self) -> torch.Tensor | None:
+    def _command_values(self) -> torch.Tensor | None:
         if hasattr(self.env, "_command_tensor"):
-            command = self.env._command_tensor()
+            return self.env._command_tensor()
         elif hasattr(self.env, "command_generator") and hasattr(self.env.command_generator, "vel_command_b"):
-            command = self.env.command_generator.vel_command_b
-        else:
+            return self.env.command_generator.vel_command_b
+        return None
+
+    def _command_speeds(self) -> torch.Tensor | None:
+        command = self._command_values()
+        if command is None:
             return None
         return torch.norm(command[:, :2].to(self.device), dim=-1)

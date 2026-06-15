@@ -30,6 +30,10 @@ class AMPPPO(PPO):
         amp_replay_buffer_size: int = 100_000,
         amp_reward_coef: float = 0.2,
         amp_reward_min_command_speed: float = 2.0,
+        amp_reward_max_command_y_abs: float = 0.0,
+        amp_reward_command_y_gate_width: float = 0.0,
+        amp_reward_max_command_yaw_abs: float = 0.0,
+        amp_reward_command_yaw_gate_width: float = 0.0,
         amp_discriminator_hidden_dims: list[int] | tuple[int, ...] | None = None,
         amp_discriminator_learning_rate: float = 1.0e-4,
         amp_discriminator_weight_decay: float = 1.0e-4,
@@ -44,6 +48,10 @@ class AMPPPO(PPO):
         self.amp_num_frames = int(amp_num_frames)
         self.amp_reward_coef = float(amp_reward_coef)
         self.amp_reward_min_command_speed = float(amp_reward_min_command_speed)
+        self.amp_reward_max_command_y_abs = float(amp_reward_max_command_y_abs)
+        self.amp_reward_command_y_gate_width = float(amp_reward_command_y_gate_width)
+        self.amp_reward_max_command_yaw_abs = float(amp_reward_max_command_yaw_abs)
+        self.amp_reward_command_yaw_gate_width = float(amp_reward_command_yaw_gate_width)
         self.amp_grad_penalty_coef = float(amp_grad_penalty_coef)
         self.expert_sampler = expert_sampler
 
@@ -71,17 +79,17 @@ class AMPPPO(PPO):
         amp_obs_frames: torch.Tensor,
         task_rewards: torch.Tensor,
         command_speeds: torch.Tensor | None = None,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        command_values: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         with torch.no_grad():
             self.discriminator.eval()
             normalized = self.amp_normalizer.normalize(amp_obs_frames.to(self.device))
             logits = self.discriminator(normalized).squeeze(-1)
             amp_rewards = self.amp_reward_coef * torch.clamp(1.0 - 0.25 * (logits - 1.0).square(), min=0.0)
-            if command_speeds is not None and self.amp_reward_min_command_speed > 0.0:
-                speed_gate = (command_speeds.to(self.device) >= self.amp_reward_min_command_speed).float()
-                amp_rewards *= speed_gate
+            reward_gate = self.amp_reward_gate(command_speeds=command_speeds, command_values=command_values)
+            amp_rewards *= reward_gate
             self.discriminator.train()
-        return task_rewards + amp_rewards.view_as(task_rewards), amp_rewards, logits
+        return task_rewards + amp_rewards.view_as(task_rewards), amp_rewards, logits, reward_gate
 
     def process_env_step(
         self,
@@ -90,9 +98,52 @@ class AMPPPO(PPO):
         dones: torch.Tensor,
         extras: dict[str, torch.Tensor],
         amp_obs_frames: torch.Tensor,
+        amp_replay_gate: torch.Tensor | None = None,
     ) -> None:
-        self.amp_replay_buffer.insert(amp_obs_frames)
+        if amp_replay_gate is None:
+            self.amp_replay_buffer.insert(amp_obs_frames)
+        else:
+            keep_ids = (amp_replay_gate.to(self.device) > 0.0).nonzero(as_tuple=False).flatten()
+            if keep_ids.numel() > 0:
+                self.amp_replay_buffer.insert(amp_obs_frames[keep_ids])
         super().process_env_step(obs, rewards, dones, extras)
+
+    def amp_reward_gate(
+        self,
+        command_speeds: torch.Tensor | None = None,
+        command_values: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if command_speeds is not None:
+            gate = torch.ones_like(command_speeds, device=self.device)
+            if self.amp_reward_min_command_speed > 0.0:
+                gate *= (command_speeds.to(self.device) >= self.amp_reward_min_command_speed).float()
+        elif command_values is not None:
+            gate = torch.ones(command_values.shape[0], device=self.device)
+        else:
+            return torch.ones(1, device=self.device)
+
+        if command_values is None:
+            return gate
+        commands = command_values.to(self.device)
+        if self.amp_reward_max_command_y_abs > 0.0:
+            gate *= self._upper_abs_command_gate(
+                torch.abs(commands[:, 1]),
+                self.amp_reward_max_command_y_abs,
+                self.amp_reward_command_y_gate_width,
+            )
+        if self.amp_reward_max_command_yaw_abs > 0.0:
+            gate *= self._upper_abs_command_gate(
+                torch.abs(commands[:, 2]),
+                self.amp_reward_max_command_yaw_abs,
+                self.amp_reward_command_yaw_gate_width,
+            )
+        return gate
+
+    @staticmethod
+    def _upper_abs_command_gate(command_abs: torch.Tensor, max_abs: float, gate_width: float) -> torch.Tensor:
+        if gate_width <= 0.0:
+            return (command_abs <= float(max_abs)).float()
+        return torch.clamp((float(max_abs) + float(gate_width) - command_abs) / float(gate_width), 0.0, 1.0)
 
     def _sample_expert_amp(self, batch_size: int) -> torch.Tensor:
         samples = self.expert_sampler(batch_size, self.amp_num_frames).to(self.device)

@@ -180,6 +180,10 @@ class AdversarialMotionPriorCfg:
     replay_buffer_size = 100_000
     reward_coef = 0.2
     reward_min_command_speed = 2.0
+    reward_max_command_y_abs = 0.0
+    reward_command_y_gate_width = 0.0
+    reward_max_command_yaw_abs = 0.0
+    reward_command_yaw_gate_width = 0.0
     discriminator_hidden_dims = [256, 128]
     discriminator_learning_rate = 1.0e-4
     discriminator_weight_decay = 1.0e-4

@@ -661,6 +661,12 @@ class MagicBotZ1FlatSprintAMPStage2RYawAuthorityEnvCfg(MagicBotZ1FlatSprintAMPSt
 
 
 @configclass
+class MagicBotZ1FlatSprintAMPStage2SGatedPriorEnvCfg(MagicBotZ1FlatSprintAMPStage2RYawAuthorityEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+
+
+@configclass
 class MagicBotZ1FlatAgentCfg(G1FlatAgentCfg):
     experiment_name: str = "magicbot_z1_flat"
     wandb_project: str = "magicbot_z1_flat"
@@ -950,6 +956,25 @@ class MagicBotZ1FlatSprintAMPStage2RYawAuthorityAgentCfg(MagicBotZ1FlatSprintAMP
         self.algorithm.learning_rate = 8.0e-6
         self.motion_prior.reward_coef = 0.08
         self.motion_prior.reward_min_command_speed = 3.35
+        self.save_interval = 25
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage2SGatedPriorAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = (
+        "z1_sprint_amp_stage2s_gatedprior_cmdx3p35_4p55_"
+        "cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_lr8e-6"
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.learning_rate = 8.0e-6
+        self.motion_prior.reward_coef = 0.08
+        self.motion_prior.reward_min_command_speed = 3.35
+        self.motion_prior.reward_max_command_y_abs = 0.12
+        self.motion_prior.reward_command_y_gate_width = 0.13
+        self.motion_prior.reward_max_command_yaw_abs = 0.20
+        self.motion_prior.reward_command_yaw_gate_width = 0.25
         self.save_interval = 25
 
 
