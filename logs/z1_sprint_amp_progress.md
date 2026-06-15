@@ -6613,3 +6613,82 @@ Planned first training gate:
   continue from Stage2AA-cont `model_23448.pt` with `--reset_optimizer`, `1024` envs, `25` iterations.
 - purpose:
   test whether mixed low/high command retention can keep the Stage2AA-cont low-speed push recovery while recovering some of Stage2AB's `3.5-4.0m/s` fixed-speed improvement.
+
+### 2026-06-15 Stage2AC First Gate Result
+
+Run:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2ac_mixedretention`
+- run:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-47-59_z1_sprint_amp_stage2ac_mixedretention_from23448_cmdx-0p5_4p05_env1024_20260615_194712`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2ac_mixedretention_from23448_cmdx-0p5_4p05_env1024_20260615_194712.out`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-15-14_z1_sprint_amp_stage2aa_continue_from23424_cmdx-1p0_4p1_env1024_20260615_191414/model_23448.pt`
+- final checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-47-59_z1_sprint_amp_stage2ac_mixedretention_from23448_cmdx-0p5_4p05_env1024_20260615_194712/model_23472.pt`
+
+Final online indicators from TensorBoard at step `23472`:
+
+| metric | value |
+| --- | ---: |
+| mean reward | 12.4782 |
+| mean episode length | 536.4000 |
+| timeout ratio | 0.8819 |
+| head/shoulder ratio | 0.1181 |
+| body contact ratio | 0.0000 |
+| speed failure ratio | 0.0000 |
+| track xy | 0.8037 |
+| track y | 0.0948 |
+| track yaw | 0.3391 |
+| forward speed progress | 0.0136 |
+| yaw progress | 0.0030 |
+| AMP step gate | 0.1392 |
+| AMP replay gate | 0.1392 |
+| AMP step reward | 0.0009 |
+| learning rate | 0.00003 |
+
+Straight fixed-speed eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-47-59_z1_sprint_amp_stage2ac_mixedretention_from23448_cmdx-0p5_4p05_env1024_20260615_194712/eval_fixed_speed_23472_env64_2p5_4p0.txt`
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AC 23472 | 2.50 | 2.5285 | 0.0996 | 0.1368 | 0.2384 | 2 | 2 | 0 |
+| Stage2AC 23472 | 3.00 | 2.8998 | 0.1914 | 0.2333 | 0.3414 | 5 | 5 | 0 |
+| Stage2AC 23472 | 3.50 | 2.7673 | 0.8010 | 0.8477 | 3.6526 | 12 | 4 | 8 |
+| Stage2AC 23472 | 4.00 | 3.3272 | 0.7155 | 0.7700 | 2.3737 | 12 | 9 | 3 |
+
+Moderate-turn fixed-command eval:
+
+- command: `vy=0.20`, `wz=0.35`
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-47-59_z1_sprint_amp_stage2ac_mixedretention_from23448_cmdx-0p5_4p05_env1024_20260615_194712/eval_fixed_command_23472_vy0p20_wz0p35_env32.txt`
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AC 23472 | 3.00 | 2.9370 | 0.1472 | 0.5558 | 0.1544 | 0.2245 | 0.3449 | 2 | 2 | 0 |
+| Stage2AC 23472 | 3.50 | 3.1611 | 0.1482 | 0.5394 | 0.3797 | 0.4461 | 1.0534 | 9 | 9 | 0 |
+| Stage2AC 23472 | 4.00 | 3.2435 | 0.1784 | 0.5332 | 0.7678 | 0.8225 | 2.3585 | 8 | 8 | 0 |
+
+Low-speed push recovery eval:
+
+- artifact:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_19-47-59_z1_sprint_amp_stage2ac_mixedretention_from23448_cmdx-0p5_4p05_env1024_20260615_194712/eval_push_recovery_23472_low_vx0_1_push1_env16.txt`
+
+| checkpoint | target vx | recovery ratio | xy abs err | p90 xy err | p10 height | resets | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2AC 23472 | 0.0 | 0.9792 | 0.3497 | 0.8964 | 0.6735 | 0 | 0 |
+| Stage2AC 23472 | 0.5 | 0.8542 | 0.4337 | 0.8928 | 0.6811 | 0 | 0 |
+| Stage2AC 23472 | 1.0 | 0.9583 | 0.4275 | 0.9048 | 0.6776 | 0 | 0 |
+
+Decision:
+
+- Stage2AC `model_23472.pt` succeeds at preserving low-speed push recovery while recovering some high-speed behavior.
+- It is the best current diagnostic for fixed straight `4.0m/s` mean speed (`3.3272`) and keeps speed-tracking resets at `4.0m/s` lower than Stage2AA-cont and Stage2AB.
+- It should not replace Stage2AA-cont `model_23448.pt` as the general mainline yet because fixed straight `3.5m/s` regressed badly, with many speed-tracking resets.
+- Keep both:
+  - Stage2AA-cont `model_23448.pt` as the current general robust checkpoint;
+  - Stage2AC `model_23472.pt` as the best `4.0m/s` transition diagnostic.
+- Next branch should target the `3.25-3.75m/s` gap explicitly, ideally from Stage2AC if preserving its `4.0m/s` benefit, or from Stage2AA-cont if protecting the smoother `3.5m/s` behavior is more important.
