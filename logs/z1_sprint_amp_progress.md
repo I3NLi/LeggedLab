@@ -5623,3 +5623,81 @@ Training plan:
 - first gate: 25 iterations.
 - success condition:
   recover low-speed push ratio toward the protected baseline while keeping Stage2W's `3.5-4.0m/s` straight/turn metrics from collapsing.
+
+### 2026-06-15 Stage2X Result and Rejection
+
+Run:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2x_lowspeedrobust`
+- run directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-05-16_z1_sprint_amp_stage2x_lowspeedrobust_fromstage2w23774_cmdx-1p0_4p55_push1p5_env1024_20260615_180459`
+- stdout:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/z1_sprint_amp_stage2x_lowspeedrobust_fromstage2w23774_cmdx-1p0_4p55_push1p5_env1024_20260615_180459.out`
+- start checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_15-04-36_z1_sprint_amp_stage2w_cmdcond_fromstage2s23750_cmdx3p35_4p55_cmdy0p30_yaw0p90_refcmd64_j256_ampallturn_env1024_20260615_150420/model_23774.pt`
+- final checkpoint:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-05-16_z1_sprint_amp_stage2x_lowspeedrobust_fromstage2w23774_cmdx-1p0_4p55_push1p5_env1024_20260615_180459/model_23798.pt`
+
+Final online indicators from TensorBoard at step `23798`:
+
+| metric | value |
+| --- | ---: |
+| mean reward | -1.6424 |
+| mean episode length | 462.4800 |
+| track xy | 0.3764 |
+| track y | 0.0871 |
+| track yaw | 0.2769 |
+| yaw progress | 0.0433 |
+| timeout ratio | 0.5208 |
+| head/shoulder ratio | 0.2083 |
+| speed failure ratio | 0.2708 |
+| AMP step gate | 0.1401 |
+| AMP replay gate | 0.1401 |
+| AMP reward | 0.0012 |
+
+Eval artifacts:
+
+- final straight:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-05-16_z1_sprint_amp_stage2x_lowspeedrobust_fromstage2w23774_cmdx-1p0_4p55_push1p5_env1024_20260615_180459/eval_fixed_speed_23798_env64_3p0_4p0.txt`
+- final strong turn:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-05-16_z1_sprint_amp_stage2x_lowspeedrobust_fromstage2w23774_cmdx-1p0_4p55_push1p5_env1024_20260615_180459/eval_fixed_command_23798_vy0p30_wz0p60_env32.txt`
+- early low-speed push:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-05-16_z1_sprint_amp_stage2x_lowspeedrobust_fromstage2w23774_cmdx-1p0_4p55_push1p5_env1024_20260615_180459/eval_push_recovery_23775_low_vx0_1_push1_env16.txt`
+- final low-speed push:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_18-05-16_z1_sprint_amp_stage2x_lowspeedrobust_fromstage2w23774_cmdx-1p0_4p55_push1p5_env1024_20260615_180459/eval_push_recovery_23798_low_vx0_1_push1_env16.txt`
+
+Final straight eval (`vy=0.0`, `wz=0.0`, `num_envs=64`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | vx abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2X 23798 | 3.00 | 3.0867 | 0.1385 | 0.1729 | 0.2962 | 2 | 2 | 0 |
+| Stage2X 23798 | 3.50 | 3.3195 | 0.2312 | 0.2643 | 0.4410 | 2 | 2 | 0 |
+| Stage2X 23798 | 4.00 | 3.4652 | 0.5410 | 0.5646 | 1.1674 | 2 | 1 | 1 |
+
+Final strong turn eval (`vy=0.30`, `wz=0.60`, `num_envs=32`, `duration=4`, `warmup=2`):
+
+| checkpoint | target vx | mean vx | mean vy | mean wz | vx abs err | vy abs err | wz abs err | xy abs err | p90 xy err | resets | head/shoulder | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2X 23798 | 3.00 | 3.0558 | 0.3043 | 0.4307 | 0.1365 | 0.0812 | 0.4068 | 0.1750 | 0.2923 | 2 | 2 | 0 |
+| Stage2X 23798 | 3.50 | 3.2462 | 0.3509 | 0.4057 | 0.2717 | 0.0973 | 0.4785 | 0.3046 | 0.4701 | 2 | 2 | 0 |
+| Stage2X 23798 | 4.00 | 3.4083 | 0.3536 | 0.3772 | 0.5921 | 0.1240 | 0.5317 | 0.6161 | 1.1780 | 3 | 3 | 0 |
+
+Low-speed push recovery comparison:
+
+| checkpoint | target vx | recovery ratio | xy abs err | p90 xy err | p10 height | resets | speed tracking |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stage2X 23775 | 0.0 | 0.0000 | 1.4047 | 2.1358 | 0.6374 | 0 | 0 |
+| Stage2X 23775 | 0.5 | 0.0000 | 1.4259 | 2.0405 | 0.6233 | 0 | 0 |
+| Stage2X 23775 | 1.0 | 0.0000 | 1.2142 | 1.8588 | 0.6177 | 16 | 16 |
+| Stage2X 23798 | 0.0 | 0.0625 | 0.9433 | 1.5821 | 0.6625 | 0 | 0 |
+| Stage2X 23798 | 0.5 | 0.0000 | 1.0438 | 1.6076 | 0.6498 | 0 | 0 |
+| Stage2X 23798 | 1.0 | 0.0000 | 0.9128 | 1.4450 | 0.6432 | 16 | 16 |
+
+Decision:
+
+- Reject Stage2X as the next mainline.
+- It only weakly improves `vx=0.0` push recovery (`0.0000 -> 0.0625`) and does not fix `vx=0.5/1.0`.
+- It degrades Stage2W high-speed tracking, especially `4.0m/s` straight and strong-turn cases.
+- The online reset mix also worsened: head/shoulder `0.2083`, speed failure `0.2708`.
+- Do not continue from `model_23798.pt` unless the goal is a narrow diagnostic.
+- Next branch should start from the protected low-speed-robust `model_23000.pt` and add sprint AMP gradually, instead of trying to recover low-speed robustness from a high-speed-only policy.
