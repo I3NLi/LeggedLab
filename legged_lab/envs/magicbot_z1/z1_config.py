@@ -59,6 +59,11 @@ class MagicBotZ1RewardCfg(RewardCfg):
         params={"min_command_x": 3.0, "max_ratio": 1.0},
     )
     track_ang_vel_z_exp = RewTerm(func=mdp.track_ang_vel_z_world_exp, weight=1.0, params={"std": 0.5})
+    yaw_rate_progress = RewTerm(
+        func=mdp.yaw_rate_progress,
+        weight=0.0,
+        params={"min_command_abs": 0.25, "max_ratio": 1.0},
+    )
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-1.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     energy = RewTerm(func=mdp.energy, weight=-1e-3)
@@ -637,6 +642,25 @@ class MagicBotZ1FlatSprintAMPStage2QYawFocusEnvCfg(MagicBotZ1FlatSprintAMPStage2
 
 
 @configclass
+class MagicBotZ1FlatSprintAMPStage2RYawAuthorityEnvCfg(MagicBotZ1FlatSprintAMPStage2QYawFocusEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.ranges.lin_vel_y = (-0.25, 0.25)
+        self.commands.ranges.ang_vel_z = (-0.85, 0.85)
+        self.commands.straight_command_prob = 0.35
+        self.commands.yaw_only_command_prob = 0.45
+        self.reference_motion.speed_match_tolerance = 0.95
+        self.reward.track_lin_vel_y_exp.weight = 0.25
+        self.reward.track_lin_vel_y_exp.params["std"] = 0.45
+        self.reward.track_ang_vel_z_exp.weight = 2.35
+        self.reward.track_ang_vel_z_exp.params["std"] = 0.38
+        self.reward.yaw_rate_progress.weight = 0.45
+        self.reward.yaw_rate_progress.params["min_command_abs"] = 0.25
+        self.reward.forward_speed_progress.weight = 0.22
+        self.reward.head_shoulder_contact_termination_penalty.weight = -300.0
+
+
+@configclass
 class MagicBotZ1FlatAgentCfg(G1FlatAgentCfg):
     experiment_name: str = "magicbot_z1_flat"
     wandb_project: str = "magicbot_z1_flat"
@@ -909,6 +933,21 @@ class MagicBotZ1FlatSprintAMPStage2QYawFocusAgentCfg(MagicBotZ1FlatSprintAMPAgen
     def __post_init__(self):
         super().__post_init__()
         self.algorithm.learning_rate = 1.0e-5
+        self.motion_prior.reward_coef = 0.08
+        self.motion_prior.reward_min_command_speed = 3.35
+        self.save_interval = 25
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage2RYawAuthorityAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = (
+        "z1_sprint_amp_stage2r_yawauthority_cmdx3p35_4p55_"
+        "cmdy0p25_yaw0p85_straight0p35_yawonly0p45_yawprog0p45_lr8e-6"
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.learning_rate = 8.0e-6
         self.motion_prior.reward_coef = 0.08
         self.motion_prior.reward_min_command_speed = 3.35
         self.save_interval = 25

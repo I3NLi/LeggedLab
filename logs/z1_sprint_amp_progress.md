@@ -4580,3 +4580,72 @@ Stage2Q checkpoint choice:
   - keep Stage2Q as a useful branch for y/turn stability analysis;
   - do not keep training Stage2Q blindly for many checkpoints;
   - next yaw step should make yaw authority more explicit, for example a yaw-error gated reward/penalty balance or a short yaw curriculum that raises yaw command only after forward speed is stable.
+
+## Stage2R: yaw authority progress reward
+
+Purpose:
+
+- Stage2Q improved y/turn stability, but did not make yaw rate track the command strongly enough.
+- Fixed eval showed:
+  - standard `wz=0.35` reached only about `0.20-0.23`;
+  - stronger `wz=0.60` reached only about `0.32-0.36`.
+- Add a yaw-specific progress reward so nonzero yaw commands are rewarded for producing yaw rate in the commanded direction, not just for staying within a broad exponential error basin.
+
+Reward change:
+
+- Added `mdp.yaw_rate_progress`.
+- It computes `sign(command_yaw) * actual_yaw / abs(command_yaw)`, clamps it to `[0, max_ratio]`, and masks out small commands below `min_command_abs`.
+- Default `MagicBotZ1RewardCfg.yaw_rate_progress.weight=0.0`, so existing tasks are unchanged unless a stage enables it.
+
+Config changes:
+
+- task: `magicbot_z1_flat_sprint_amp_stage2r_yawauthority`
+- base: `MagicBotZ1FlatSprintAMPStage2QYawFocusEnvCfg`
+- command range:
+  - `lin_vel_x=(3.35, 4.55)` inherited from Stage2P/Q
+  - `lin_vel_y=(-0.25, 0.25)`
+  - `ang_vel_z=(-0.85, 0.85)`
+  - `straight_command_prob=0.35`
+  - `yaw_only_command_prob=0.45`
+- command mix target:
+  - roughly 35% straight x-only
+  - roughly 45% yaw-only
+  - roughly 20% full lateral/yaw
+- reference motion:
+  - `min_command_speed=3.35` inherited
+  - `max_reference_speed=5.2` inherited
+  - `speed_match_tolerance=0.95`
+- reward tuning:
+  - `track_lin_vel_xy_exp.weight=1.95` inherited
+  - `track_lin_vel_xy_exp.std=0.95` inherited
+  - `track_lin_vel_y_exp.weight=0.25`
+  - `track_lin_vel_y_exp.std=0.45`
+  - `track_ang_vel_z_exp.weight=2.35`
+  - `track_ang_vel_z_exp.std=0.38`
+  - `yaw_rate_progress.weight=0.45`
+  - `yaw_rate_progress.min_command_abs=0.25`
+  - `forward_speed_progress.weight=0.22`
+  - `head_shoulder_contact_termination_penalty.weight=-300.0`
+- retained safety:
+  - `speed_tracking_duration_s=2.5`
+- agent:
+  - `learning_rate=8e-6`
+  - `motion_prior.reward_coef=0.08`
+  - `motion_prior.reward_min_command_speed=3.35`
+  - `save_interval=25`
+
+Validation:
+
+- `py_compile` passed for:
+  - `legged_lab/mdp/rewards.py`
+  - `legged_lab/envs/magicbot_z1/z1_config.py`
+  - `legged_lab/envs/__init__.py`
+- registry check passed with `AppLauncher(headless=True)`:
+  - Stage2Q keeps `yaw_rate_progress.weight=0.0`;
+  - Stage2R resolves with `straight_command_prob=0.35`, `yaw_only_command_prob=0.45`;
+  - Stage2R resolves with `ang_vel_z=(-0.85, 0.85)`;
+  - Stage2R resolves with `track_ang_vel_z_exp.weight=2.35`, `std=0.38`;
+  - Stage2R resolves with `yaw_rate_progress.weight=0.45`.
+- reward math smoke passed with `AppLauncher(headless=True)`:
+  - input cases: half-speed same-direction yaw, over-target same-direction yaw, small command, wrong-direction yaw;
+  - output: `[0.5, 1.0, 0.0, 0.0]`.

@@ -75,6 +75,21 @@ def track_ang_vel_z_world_exp(
     return torch.exp(-ang_vel_error / std**2)
 
 
+def yaw_rate_progress(
+    env: BaseEnv,
+    min_command_abs: float,
+    max_ratio: float = 1.0,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    command_yaw = env._command_tensor()[:, 2]
+    command_abs = torch.abs(command_yaw)
+    actual_yaw = env._tensor(asset.data.root_ang_vel_w)[:, 2]
+    signed_ratio = actual_yaw * torch.sign(command_yaw) / torch.clamp(command_abs, min=1.0e-6)
+    reward = torch.clamp(signed_ratio, min=0.0, max=float(max_ratio))
+    return reward * (command_abs >= float(min_command_abs)).float()
+
+
 def track_root_height_exp(env: BaseEnv, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     target_height_w = env.scene.env_origins[:, 2] + env._command_tensor()[:, 3]
