@@ -5107,3 +5107,60 @@ Stage2T checkpoint choice:
   - keep Stage2T as evidence that y authority can be strengthened;
   - do not continue Stage2T blindly;
   - next branch should target yaw separately, likely by using a yaw-specialization phase rather than pairing large yaw with the full `3.35-4.55 m/s` x-speed range immediately.
+
+### 2026-06-15 Stage2U Yaw Specialist: learn sustained yaw before returning to full sprint speed
+
+Reason:
+
+- Stage2T proved that y tracking can be improved, but sustained yaw stayed capped around `0.20-0.35 rad/s`.
+- Short probes showed the policy can produce higher yaw for about `1s`, but it cannot hold that behavior at high forward speed for the full eval window.
+- Code/asset checks found no missing command dimension, no obvious command clipping, and no hip/waist yaw mechanical limit causing the cap.
+- The `sprint1_subject2` reference has turning/yaw content, but the current AMP discriminator is not command-conditioned; using a yaw-specialization task is the lower-risk next step before changing AMP storage/discriminator semantics.
+
+Code changes:
+
+- Added task: `magicbot_z1_flat_sprint_amp_stage2u_yawspecialist`.
+- Starts from Stage2S gated AMP rather than Stage2T.
+- Command/reward design:
+  - `lin_vel_x=(2.25, 4.00)`;
+  - `lin_vel_y=(-0.30, 0.30)`;
+  - `ang_vel_z=(-0.95, 0.95)`;
+  - `straight_command_prob=0.20`;
+  - `yaw_only_command_prob=0.55`;
+  - `track_lin_vel_xy_exp.weight=1.70`, `std=1.05`;
+  - `track_lin_vel_y_exp.weight=0.30`, `std=0.42`;
+  - `lateral_speed_progress.weight=0.12`;
+  - `track_ang_vel_z_exp.weight=2.85`, `std=0.32`;
+  - `yaw_rate_progress.weight=0.95`;
+  - `forward_speed_progress.weight=0.16`;
+  - `joint_deviation_hip.weight=-0.10`;
+  - `joint_deviation_arms.weight=-0.16`.
+- AMP gate:
+  - `reward_min_command_speed=2.75`;
+  - `reward_max_command_y_abs=0.12`;
+  - `reward_command_y_gate_width=0.13`;
+  - `reward_max_command_yaw_abs=0.20`;
+  - `reward_command_yaw_gate_width=0.25`.
+
+Validation:
+
+- Python compile passed:
+  `python -m compileall legged_lab/envs/magicbot_z1/z1_config.py legged_lab/envs/__init__.py`
+- 4 env / 1 iteration Isaac smoke passed with exit code `0`:
+  `/tmp/z1_stage2u_smoke.log`
+- Smoke output directory:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_14-13-48_z1_sprint_amp_stage2u_yawspecialist_cmdx2p25_4p0_cmdy0p30_yaw0p95_straight0p20_yawonly0p55_yawprog0p95_ampgate_y0p12_yaw0p20_lr5e-6`
+- Smoke produced:
+  `model_0.pt`, `params/env.yaml`, and `params/agent.yaml`.
+
+Training plan:
+
+- Start from Stage2S:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-33-09_z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253/model_23750.pt`
+- First gate should be `model_23775.pt`.
+- Evaluate first gate with:
+  - straight: `vx=3.0, 3.5, 4.0`;
+  - standard turn: `vy=0.20`, `wz=0.35`, `vx=3.0, 3.5, 4.0`;
+  - strong turn: `vy=0.30`, `wz=0.60`, `vx=3.0, 3.5, 4.0`.
+- Success condition:
+  sustained yaw improves over Stage2S without sacrificing too much `3.5-4.0 m/s` forward stability.
