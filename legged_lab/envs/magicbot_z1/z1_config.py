@@ -747,6 +747,32 @@ class MagicBotZ1FlatSprintAMPStage2VYawTransferEnvCfg(MagicBotZ1FlatSprintAMPSta
 
 
 @configclass
+class MagicBotZ1FlatSprintAMPStage2WCommandConditionedEnvCfg(MagicBotZ1FlatSprintAMPStage2SGatedPriorEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.ranges.lin_vel_y = (-0.30, 0.30)
+        self.commands.ranges.ang_vel_z = (-0.90, 0.90)
+        self.commands.straight_command_prob = 0.35
+        self.commands.yaw_only_command_prob = 0.45
+        self.reference_motion.command_conditioned_sampling = True
+        self.reference_motion.command_sample_candidates = 64
+        self.reference_motion.speed_sample_jitter_frames = 256
+        self.reference_motion.command_lin_vel_x_scale = 0.80
+        self.reference_motion.command_lin_vel_y_scale = 0.28
+        self.reference_motion.command_yaw_scale = 0.40
+        self.reward.track_lin_vel_y_exp.weight = 0.35
+        self.reward.track_lin_vel_y_exp.params["std"] = 0.40
+        self.reward.lateral_speed_progress.weight = 0.10
+        self.reward.lateral_speed_progress.params["min_command_abs"] = 0.16
+        self.reward.track_ang_vel_z_exp.weight = 2.45
+        self.reward.track_ang_vel_z_exp.params["std"] = 0.36
+        self.reward.yaw_rate_progress.weight = 0.55
+        self.reward.yaw_rate_progress.params["min_command_abs"] = 0.25
+        self.reward.forward_speed_progress.weight = 0.22
+        self.reward.forward_speed_progress.params["min_command_x"] = 3.35
+
+
+@configclass
 class MagicBotZ1FlatAgentCfg(G1FlatAgentCfg):
     experiment_name: str = "magicbot_z1_flat"
     wandb_project: str = "magicbot_z1_flat"
@@ -1115,6 +1141,28 @@ class MagicBotZ1FlatSprintAMPStage2VYawTransferAgentCfg(MagicBotZ1FlatSprintAMPA
         self.motion_prior.reward_command_y_gate_width = 0.13
         self.motion_prior.reward_max_command_yaw_abs = 0.20
         self.motion_prior.reward_command_yaw_gate_width = 0.25
+        self.save_interval = 25
+
+
+@configclass
+class MagicBotZ1FlatSprintAMPStage2WCommandConditionedAgentCfg(MagicBotZ1FlatSprintAMPAgentCfg):
+    run_name: str = (
+        "z1_sprint_amp_stage2w_cmdcond_fromstage2s_"
+        "cmdx3p35_4p55_cmdy0p30_yaw0p90_refcmd64_y0p28_yaw0p40_"
+        "ampallturn_lr6e-6"
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.algorithm.learning_rate = 6.0e-6
+        self.motion_prior.reward_coef = 0.08
+        self.motion_prior.reward_min_command_speed = 3.35
+        self.motion_prior.reward_max_command_y_abs = 0.30
+        self.motion_prior.reward_command_y_gate_width = 0.05
+        self.motion_prior.reward_max_command_yaw_abs = 0.90
+        self.motion_prior.reward_command_yaw_gate_width = 0.10
+        self.motion_prior.expert_command_conditioning = True
+        self.motion_prior.expert_command_dim = 3
         self.save_interval = 25
 
 

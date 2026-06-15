@@ -34,6 +34,8 @@ class AMPPPO(PPO):
         amp_reward_command_y_gate_width: float = 0.0,
         amp_reward_max_command_yaw_abs: float = 0.0,
         amp_reward_command_yaw_gate_width: float = 0.0,
+        amp_expert_command_conditioning: bool = False,
+        amp_expert_command_dim: int = 3,
         amp_discriminator_hidden_dims: list[int] | tuple[int, ...] | None = None,
         amp_discriminator_learning_rate: float = 1.0e-4,
         amp_discriminator_weight_decay: float = 1.0e-4,
@@ -52,6 +54,8 @@ class AMPPPO(PPO):
         self.amp_reward_command_y_gate_width = float(amp_reward_command_y_gate_width)
         self.amp_reward_max_command_yaw_abs = float(amp_reward_max_command_yaw_abs)
         self.amp_reward_command_yaw_gate_width = float(amp_reward_command_yaw_gate_width)
+        self.amp_expert_command_conditioning = bool(amp_expert_command_conditioning)
+        self.amp_expert_command_dim = int(amp_expert_command_dim)
         self.amp_grad_penalty_coef = float(amp_grad_penalty_coef)
         self.expert_sampler = expert_sampler
 
@@ -72,6 +76,7 @@ class AMPPPO(PPO):
             int(amp_replay_buffer_size),
             self.amp_num_frames,
             self.device,
+            command_dim=self.amp_expert_command_dim if self.amp_expert_command_conditioning else 0,
         )
 
     def predict_amp_reward(
@@ -99,13 +104,16 @@ class AMPPPO(PPO):
         extras: dict[str, torch.Tensor],
         amp_obs_frames: torch.Tensor,
         amp_replay_gate: torch.Tensor | None = None,
+        command_values: torch.Tensor | None = None,
     ) -> None:
+        commands = self._prepare_amp_commands(command_values, num_rows=int(amp_obs_frames.shape[0]))
         if amp_replay_gate is None:
-            self.amp_replay_buffer.insert(amp_obs_frames)
+            self.amp_replay_buffer.insert(amp_obs_frames, commands=commands)
         else:
             keep_ids = (amp_replay_gate.to(self.device) > 0.0).nonzero(as_tuple=False).flatten()
             if keep_ids.numel() > 0:
-                self.amp_replay_buffer.insert(amp_obs_frames[keep_ids])
+                kept_commands = commands[keep_ids] if commands is not None else None
+                self.amp_replay_buffer.insert(amp_obs_frames[keep_ids], commands=kept_commands)
         super().process_env_step(obs, rewards, dones, extras)
 
     def amp_reward_gate(
@@ -145,8 +153,28 @@ class AMPPPO(PPO):
             return (command_abs <= float(max_abs)).float()
         return torch.clamp((float(max_abs) + float(gate_width) - command_abs) / float(gate_width), 0.0, 1.0)
 
-    def _sample_expert_amp(self, batch_size: int) -> torch.Tensor:
-        samples = self.expert_sampler(batch_size, self.amp_num_frames).to(self.device)
+    def _prepare_amp_commands(self, command_values: torch.Tensor | None, num_rows: int) -> torch.Tensor | None:
+        if not self.amp_expert_command_conditioning:
+            return None
+        if command_values is None:
+            return torch.zeros(num_rows, self.amp_expert_command_dim, device=self.device)
+        commands = command_values.to(self.device)
+        if commands.ndim != 2 or commands.shape[1] < self.amp_expert_command_dim:
+            raise ValueError(
+                "AMP command conditioning expects commands with shape "
+                f"(N, >= {self.amp_expert_command_dim}), got {tuple(commands.shape)}."
+            )
+        return commands[:, : self.amp_expert_command_dim]
+
+    def _sample_expert_amp(self, batch_size: int, command_values: torch.Tensor | None = None) -> torch.Tensor:
+        if self.amp_expert_command_conditioning and command_values is not None:
+            samples = self.expert_sampler(
+                batch_size,
+                self.amp_num_frames,
+                command_values=command_values.to(self.device),
+            ).to(self.device)
+        else:
+            samples = self.expert_sampler(batch_size, self.amp_num_frames).to(self.device)
         expected_shape = (batch_size, self.amp_num_frames, self.amp_observation_dim)
         if tuple(samples.shape) != expected_shape:
             raise RuntimeError(f"Expert AMP samples must have shape {expected_shape}, got {tuple(samples.shape)}.")
@@ -185,9 +213,18 @@ class AMPPPO(PPO):
 
         mini_batch_size = self.storage.num_envs * self.storage.num_transitions_per_env // self.num_mini_batches
         num_updates = self.num_learning_epochs * self.num_mini_batches
-        amp_policy_generator = self.amp_replay_buffer.mini_batch_generator(num_updates, mini_batch_size)
+        amp_policy_generator = self.amp_replay_buffer.mini_batch_generator(
+            num_updates,
+            mini_batch_size,
+            return_commands=self.amp_expert_command_conditioning,
+        )
 
-        for sample, policy_amp_batch in zip(generator, amp_policy_generator):
+        for sample, policy_amp_sample in zip(generator, amp_policy_generator):
+            if self.amp_expert_command_conditioning:
+                policy_amp_batch, policy_command_batch = policy_amp_sample
+            else:
+                policy_amp_batch = policy_amp_sample
+                policy_command_batch = None
             (
                 obs_batch,
                 actions_batch,
@@ -321,7 +358,7 @@ class AMPPPO(PPO):
             if self.rnd_optimizer:
                 self.rnd_optimizer.step()
 
-            expert_amp_batch = self._sample_expert_amp(mini_batch_size)
+            expert_amp_batch = self._sample_expert_amp(mini_batch_size, command_values=policy_command_batch)
             discriminator_loss, grad_penalty, policy_logits, expert_logits = self._compute_discriminator_loss(
                 policy_amp_batch, expert_amp_batch
             )

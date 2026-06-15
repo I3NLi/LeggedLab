@@ -256,17 +256,24 @@ class BaseEnv(VecEnv):
             speed_match_tolerance=float(cfg.speed_match_tolerance),
             speed_sample_jitter_frames=int(cfg.speed_sample_jitter_frames),
             amp_observation_history_length=int(cfg.amp_observation_history_length),
+            command_conditioned_sampling=bool(getattr(cfg, "command_conditioned_sampling", False)),
+            command_sample_candidates=int(getattr(cfg, "command_sample_candidates", 1)),
+            command_lin_vel_x_scale=float(getattr(cfg, "command_lin_vel_x_scale", 0.75)),
+            command_lin_vel_y_scale=float(getattr(cfg, "command_lin_vel_y_scale", 0.35)),
+            command_yaw_scale=float(getattr(cfg, "command_yaw_scale", 0.45)),
         )
 
     def _reset_reference_motion(self, env_ids):
         if self.reference_motion is None or len(env_ids) == 0:
             return
-        self.reference_motion.reset(env_ids, command_xy=self._command_tensor()[:, :2])
+        command_values = self._command_tensor()[:, :3]
+        self.reference_motion.reset(env_ids, command_xy=command_values[:, :2], command_values=command_values)
 
     def _update_reference_motion(self):
         if self.reference_motion is None:
             return
-        self.reference_motion.update(self._command_tensor()[:, :2], self.step_dt)
+        command_values = self._command_tensor()[:, :3]
+        self.reference_motion.update(command_values[:, :2], self.step_dt, command_values=command_values)
 
     def compute_current_observations(self):
         robot = self.robot
@@ -1048,11 +1055,18 @@ class BaseEnv(VecEnv):
         )
 
     def collect_reference_amp_observations(
-        self, num_samples: int, num_frames: int | None = None
+        self,
+        num_samples: int,
+        num_frames: int | None = None,
+        command_values: torch.Tensor | None = None,
     ) -> torch.Tensor:
         if self.reference_motion is None:
             raise RuntimeError("Reference motion is disabled; expert AMP observations are not available.")
-        return self.reference_motion.sample_expert_amp_observations(num_samples, num_frames=num_frames)
+        return self.reference_motion.sample_expert_amp_observations(
+            num_samples,
+            num_frames=num_frames,
+            command_values=command_values,
+        )
 
     def _obs_tensor_dict(self, actor_obs, critic_obs):
         if TensorDict is None:

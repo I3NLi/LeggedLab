@@ -95,6 +95,7 @@ class AMPOnPolicyRunner(OnPolicyRunner):
                         extras,
                         amp_obs_frames=amp_obs_frames,
                         amp_replay_gate=amp_replay_gate,
+                        command_values=command_values,
                     )
 
                     done_ids = dones.nonzero(as_tuple=False).flatten()
@@ -274,6 +275,8 @@ class AMPOnPolicyRunner(OnPolicyRunner):
             amp_reward_command_y_gate_width=float(motion_prior_cfg.get("reward_command_y_gate_width", 0.0)),
             amp_reward_max_command_yaw_abs=float(motion_prior_cfg.get("reward_max_command_yaw_abs", 0.0)),
             amp_reward_command_yaw_gate_width=float(motion_prior_cfg.get("reward_command_yaw_gate_width", 0.0)),
+            amp_expert_command_conditioning=bool(motion_prior_cfg.get("expert_command_conditioning", False)),
+            amp_expert_command_dim=int(motion_prior_cfg.get("expert_command_dim", 3)),
             amp_discriminator_hidden_dims=list(motion_prior_cfg.get("discriminator_hidden_dims", [256, 128])),
             amp_discriminator_learning_rate=float(motion_prior_cfg.get("discriminator_learning_rate", 1.0e-4)),
             amp_discriminator_weight_decay=float(motion_prior_cfg.get("discriminator_weight_decay", 1.0e-4)),

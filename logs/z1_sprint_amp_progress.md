@@ -5370,3 +5370,65 @@ Stage2V checkpoint choice:
   - keep Stage2U `model_23774.pt` as the yaw-specialization evidence checkpoint;
   - do not continue Stage2V as-is;
   - next useful change is command-conditioned AMP/reference sampling, or an auxiliary reference-yaw term, so lateral/yaw commands can draw from turning frames in `sprint1_subject2` instead of fighting the straight-sprint prior.
+
+### 2026-06-15 Stage2W Command-Conditioned AMP/Reference Sampling
+
+Reason:
+
+- Stage2U showed yaw can improve, but lowering the whole speed range hurts sprint tracking.
+- Stage2V recovered forward speed but lost most of Stage2U's yaw gain.
+- The common issue is structural: reference reset/update and AMP expert sampling were speed-only. They did not condition expert frames on the current `vy/wz` command, so turning commands kept fighting a mostly straight-sprint prior.
+
+Code changes:
+
+- Added optional command-conditioned reference sampling:
+  - precomputes anchor yaw-frame `vx/vy` and world `wz`;
+  - samples candidate frames near target speed;
+  - chooses the frame minimizing normalized `speed/vx/vy/wz` error.
+- Added optional command storage to `AMPReplayBuffer`.
+- Added optional command-conditioned expert sampling in `AMPPPO`, using replayed policy commands when sampling expert AMP batches.
+- Added task: `magicbot_z1_flat_sprint_amp_stage2w_cmdcond`.
+
+Stage2W settings:
+
+- starts from the Stage2S stability-preserving sprint line;
+- command range:
+  - `lin_vel_x=(3.35, 4.55)`;
+  - `lin_vel_y=(-0.30, 0.30)`;
+  - `ang_vel_z=(-0.90, 0.90)`;
+  - `straight_command_prob=0.35`;
+  - `yaw_only_command_prob=0.45`;
+- reference sampling:
+  - `command_conditioned_sampling=True`;
+  - `command_sample_candidates=64`;
+  - `speed_sample_jitter_frames=256`;
+  - `command_lin_vel_x_scale=0.80`;
+  - `command_lin_vel_y_scale=0.28`;
+  - `command_yaw_scale=0.40`;
+- AMP:
+  - `expert_command_conditioning=True`;
+  - `expert_command_dim=3`;
+  - `reward_coef=0.08`;
+  - `reward_min_command_speed=3.35`;
+  - AMP gate covers the full Stage2W turn range: `y=0.30`, `yaw=0.90`;
+  - learning rate `6e-6`.
+
+Validation:
+
+- compile passed for AMP, base env, reference motion, Z1 config and task registry.
+- smoke run passed:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_15-00-38_z1_stage2w_cmdcond_smoke2`
+- smoke generated `model_0.pt`.
+- smoke YAML confirmed:
+  - `command_conditioned_sampling: true`;
+  - `speed_sample_jitter_frames: 256`;
+  - `expert_command_conditioning: true`.
+- offline motion-data sampling check showed `speed_sample_jitter_frames=256` gives much better `vy/wz` reference matches than `32` while preserving target speed.
+
+Training plan:
+
+- resume from Stage2S:
+  `/home/hiyio/LeggedLab/logs/magicbot_z1_flat/2026-06-15_13-33-09_z1_sprint_amp_stage2s_gatedprior_fromstage2q23725_cmdx3p35_4p55_cmdy0p25_yaw0p85_straight0p35_yawonly0p45_ampgate_y0p12_yaw0p20_env1024_20260615_133253/model_23750.pt`
+- first gate: 25 iterations.
+- success condition:
+  preserve Stage2S straight/high-speed behavior while improving standard and strong-turn `wz` without increasing head/shoulder resets.

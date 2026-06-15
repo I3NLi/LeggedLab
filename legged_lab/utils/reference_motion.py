@@ -117,6 +117,11 @@ class ReferenceMotion:
         speed_match_tolerance: float,
         speed_sample_jitter_frames: int,
         amp_observation_history_length: int,
+        command_conditioned_sampling: bool = False,
+        command_sample_candidates: int = 1,
+        command_lin_vel_x_scale: float = 0.75,
+        command_lin_vel_y_scale: float = 0.35,
+        command_yaw_scale: float = 0.45,
     ) -> None:
         if not os.path.isfile(motion_file):
             raise FileNotFoundError(f"Invalid reference motion file: {motion_file}")
@@ -144,6 +149,11 @@ class ReferenceMotion:
         self.speed_match_tolerance = float(speed_match_tolerance)
         self.speed_sample_jitter_frames = int(speed_sample_jitter_frames)
         self.amp_observation_history_length = int(amp_observation_history_length)
+        self.command_conditioned_sampling = bool(command_conditioned_sampling)
+        self.command_sample_candidates = max(1, int(command_sample_candidates))
+        self.command_lin_vel_x_scale = max(float(command_lin_vel_x_scale), 1.0e-6)
+        self.command_lin_vel_y_scale = max(float(command_lin_vel_y_scale), 1.0e-6)
+        self.command_yaw_scale = max(float(command_yaw_scale), 1.0e-6)
 
         required_body_names = sorted(set([anchor_body_name, *self.amp_key_body_names, *self.reward_body_names]))
         with np.load(motion_file, allow_pickle=True) as data:
@@ -212,7 +222,12 @@ class ReferenceMotion:
         self.num_frames = int(self.joint_pos.shape[0])
         self.dt = 1.0 / self.fps
         self.frame_ids = torch.zeros(num_envs, dtype=torch.long, device=device)
-        self.anchor_speed = torch.norm(self.body_lin_vel_w[:, self.anchor_body_id, :2], dim=-1)
+        self.anchor_lin_vel_yaw = math_utils.quat_apply_inverse(
+            math_utils.yaw_quat(self.body_quat_w[:, self.anchor_body_id]),
+            self.body_lin_vel_w[:, self.anchor_body_id],
+        )
+        self.anchor_yaw_rate = self.body_ang_vel_w[:, self.anchor_body_id, 2]
+        self.anchor_speed = torch.norm(self.anchor_lin_vel_yaw[:, :2], dim=-1)
         eligible = self.anchor_speed >= self.min_command_speed
         if self.max_reference_speed > 0.0:
             eligible &= self.anchor_speed <= self.max_reference_speed
@@ -227,8 +242,16 @@ class ReferenceMotion:
     def amp_observation_dim(self) -> int:
         return 2 * len(self.robot_joint_names) + 13 + 3 * len(self.amp_key_body_names)
 
-    def reset(self, env_ids: torch.Tensor, command_xy: torch.Tensor | None = None) -> None:
+    def reset(
+        self,
+        env_ids: torch.Tensor,
+        command_xy: torch.Tensor | None = None,
+        command_values: torch.Tensor | None = None,
+    ) -> None:
         if env_ids.numel() == 0:
+            return
+        if self.command_conditioned_sampling and command_values is not None:
+            self.frame_ids[env_ids] = self.sample_frame_ids_by_command(command_values[env_ids])
             return
         if command_xy is None:
             random_ids = torch.randint(
@@ -239,7 +262,12 @@ class ReferenceMotion:
         command_speed = torch.norm(command_xy[env_ids], dim=-1)
         self.frame_ids[env_ids] = self.sample_frame_ids_by_speed(command_speed)
 
-    def update(self, command_xy: torch.Tensor, step_dt: float) -> None:
+    def update(
+        self,
+        command_xy: torch.Tensor,
+        step_dt: float,
+        command_values: torch.Tensor | None = None,
+    ) -> None:
         if self.frame_ids.numel() == 0:
             return
         advance = max(1, int(round(float(step_dt) * self.fps)))
@@ -252,7 +280,10 @@ class ReferenceMotion:
         mismatch = torch.abs(ref_speed - target_speed) > self.speed_match_tolerance
         env_ids = torch.where(should_match & mismatch)[0]
         if env_ids.numel() > 0:
-            self.frame_ids[env_ids] = self.sample_frame_ids_by_speed(command_speed[env_ids])
+            if self.command_conditioned_sampling and command_values is not None:
+                self.frame_ids[env_ids] = self.sample_frame_ids_by_command(command_values[env_ids])
+            else:
+                self.frame_ids[env_ids] = self.sample_frame_ids_by_speed(command_speed[env_ids])
 
     def sample_frame_ids_by_speed(self, command_speed: torch.Tensor) -> torch.Tensor:
         target_speed = self._clamp_to_reference_speed(command_speed)
@@ -269,10 +300,62 @@ class ReferenceMotion:
             positions = (positions + jitter).clamp(min=0, max=int(self.sorted_speeds.numel()) - 1)
         return self.sorted_frame_ids[positions]
 
-    def sample_expert_amp_observations(self, num_samples: int, num_frames: int | None = None) -> torch.Tensor:
+    def sample_frame_ids_by_command(self, command_values: torch.Tensor) -> torch.Tensor:
+        commands = command_values.to(self.device)
+        if commands.ndim != 2 or commands.shape[1] < 2:
+            raise ValueError(f"Command-conditioned sampling expects shape (N, >=2), got {tuple(commands.shape)}.")
+        target_xy = commands[:, :2]
+        target_speed = self._clamp_to_reference_speed(torch.norm(target_xy, dim=-1))
+        base_positions = torch.searchsorted(self.sorted_speeds.contiguous(), target_speed).clamp(
+            min=0, max=max(int(self.sorted_speeds.numel()) - 1, 0)
+        )
+
+        num_candidates = self.command_sample_candidates
+        if num_candidates <= 1:
+            return self.sorted_frame_ids[base_positions]
+
+        jitter_width = max(self.speed_sample_jitter_frames, 1)
+        offsets = torch.randint(
+            -jitter_width,
+            jitter_width + 1,
+            (commands.shape[0], num_candidates),
+            device=self.device,
+        )
+        offsets[:, 0] = 0
+        positions = (base_positions.unsqueeze(1) + offsets).clamp(min=0, max=int(self.sorted_speeds.numel()) - 1)
+        candidate_ids = self.sorted_frame_ids[positions]
+
+        ref_xy = self.anchor_lin_vel_yaw[candidate_ids, :2]
+        ref_yaw = self.anchor_yaw_rate[candidate_ids]
+        command_yaw = commands[:, 2].unsqueeze(1) if commands.shape[1] >= 3 else torch.zeros_like(ref_yaw)
+
+        speed_error = (self.anchor_speed[candidate_ids] - target_speed.unsqueeze(1)) / max(
+            self.speed_match_tolerance, 1.0e-6
+        )
+        x_error = (ref_xy[..., 0] - target_xy[:, 0].unsqueeze(1)) / self.command_lin_vel_x_scale
+        y_error = (ref_xy[..., 1] - target_xy[:, 1].unsqueeze(1)) / self.command_lin_vel_y_scale
+        yaw_error = (ref_yaw - command_yaw) / self.command_yaw_scale
+        score = speed_error.square() + x_error.square() + y_error.square() + yaw_error.square()
+        best_candidate = torch.argmin(score, dim=1)
+        return candidate_ids[torch.arange(commands.shape[0], device=self.device), best_candidate]
+
+    def sample_expert_amp_observations(
+        self,
+        num_samples: int,
+        num_frames: int | None = None,
+        command_values: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         frame_count = self.amp_observation_history_length if num_frames is None else int(num_frames)
-        random_ids = torch.randint(0, self.eligible_frame_ids.numel(), (num_samples,), device=self.device)
-        base_frame_ids = self.eligible_frame_ids[random_ids]
+        if self.command_conditioned_sampling and command_values is not None:
+            if int(command_values.shape[0]) != int(num_samples):
+                raise ValueError(
+                    "Command-conditioned expert sampling expects one command per sample, "
+                    f"got {tuple(command_values.shape)} for {num_samples} samples."
+                )
+            base_frame_ids = self.sample_frame_ids_by_command(command_values)
+        else:
+            random_ids = torch.randint(0, self.eligible_frame_ids.numel(), (num_samples,), device=self.device)
+            base_frame_ids = self.eligible_frame_ids[random_ids]
         observations = []
         for frame_offset in range(frame_count):
             frame_ids = (base_frame_ids - frame_offset).remainder(self.num_frames)

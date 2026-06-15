@@ -189,6 +189,8 @@ class AdversarialMotionPriorCfg:
     discriminator_weight_decay = 1.0e-4
     grad_penalty_coef = 5.0
     use_spectral_norm = True
+    expert_command_conditioning = False
+    expert_command_dim = 3
 
 
 @configclass

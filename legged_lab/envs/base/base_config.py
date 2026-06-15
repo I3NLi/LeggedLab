@@ -83,6 +83,11 @@ class ReferenceMotionCfg:
     speed_match_tolerance: float = 0.75
     speed_sample_jitter_frames: int = 24
     amp_observation_history_length: int = 2
+    command_conditioned_sampling: bool = False
+    command_sample_candidates: int = 1
+    command_lin_vel_x_scale: float = 0.75
+    command_lin_vel_y_scale: float = 0.35
+    command_yaw_scale: float = 0.45
 
 
 @configclass
